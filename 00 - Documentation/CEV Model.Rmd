@@ -1,0 +1,950 @@
+---
+title: 'Swaption Pricing: Displaced Diffusion CEV LMM'
+author: "Caleb Migosi"
+output:
+  word_document:
+    reference_docx: temp.docx
+    toc: yes
+    toc_depth: 2
+header-includes: \usepackage{amsmath,amssymb}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Introduction
+
+Adverse interest rate movements are a major risk concern to Aviva France's portfolio. It is of particular importance to properly model and manage these risks. 
+
+Interest rate models have been in use over the past 3 decades to appropriately model the movement of interest rates, the first of which was the Black Model(1976.) 
+
+In fact, the Black model was so ubiquitous in pricing that quotes are still made in Black implied volatility under the assumption that it was easy enough to plug the quote into the Black Model to obtain the price.
+
+For this reason, tractability and compatibility with Black pricing is an important part of the model selection and calibration process.
+
+The anchor model for this paper is an extension of the _Libor Market Model (LMM)._ Before the advent of the LMM, modelling of interet rates was based on instantaneous rates (short rates) that cannot be observed in the market.
+
+The LMM is calibrated on discretely discounted rates that are directly observable in the market.
+
+However, the standard LMM does not properly capture the volatility dynamics of complex financial instruments. It is for this reason that an extension of the model is used.
+
+We expound on both the LMM and the Displaced Diffusion CEV LMM (DD CEV LMM) drawing comparisons at each step.
+
+This will be done in 5 major parts:
+
+
+1. **Notation & Basic Financial Instruments:** We provide a rapid overview of pertinent notations and financial instruments;
+2. **Black Model:** We do a quick review of the Black Model seeing that it will be a reoccuring theme in the paper;
+2. **DD CEV LMM Diffusion:** We begin from the standard LMM and demonstrate the theoretical viability of the DD CEV extension;
+3. **Swaption Volatility dynamics:** We find an approximation for the volatility parameter in our model;
+4. **Hagan Approximation:** Using the parameter in step 3, We find an approximation for the equivalent volatility to use in the Black model;
+5. **Results & Conclusions:** We present the results of the calibration and draw conclusions.
+
+# Notation & Basic Financial Instruments 
+## Notation
+We assume the following concepts to be relatively well understood:
+
+* $L(t,T)$ - Simple compounded LIBOR on a given date $t$ with maturity $T$;
+* $r(t,T)$ - Continuous compounded interest rate at date $t$ with maturity $T$;
+* $P(t, T)$ - Price of a Zero Coupon Bond at date $t$ with maturity $T$;
+* $N$ - Notional on a Zero Coupon Bond;
+* $D(t, T)$ = $e^{-r(t,T) \times (T-t)}$ is the continuous discounting factor; (Based on $r(t,T)$ between $t$ and $T$ );
+* $T_{\alpha}$ - The maturity date of a swaption i.e. the first reset date for the underlying swap.
+* $T_{\beta}$ - The maturity date of the underlying swap.
+* $(T_{\alpha + 1} ,..., T_{\beta})$ - Swap underlying dates. This notation is important for swaption pricing.
+* $k \in \{1, ..., N\}$ - Time steps between $T_{\alpha}$ and $T_{\beta} = T_N$ 
+* $F(t; T_{k-1}; T_{k}) = F_k(t)$ - Forward LIBOR at time $t$ for the maturity pair $T_{k-1}; T_{k}$;
+* $S_{\alpha, \beta}(t)$ - Forward swap rate for a swap initiated at $T_\alpha$, expiring at $T_\beta$
+* $\theta_i$ - Year fraction between $T_{k}$ and $T_{k+1}$;
+* $W_{t}, Z_{t}$ - Brownian Motions under their respective measures.
+
+**We also note that all the rates in this study are quoted on an annual basis.**
+
+## Financial Instruments
+### Interest Rate Swaps (IRS)
+An interest rate swap is a contractual agreement between two counterparties involving a periodic exchange of interest rate flows based on a defined notional amount.
+
+In our case, we consider an IRS based on an exchange of the LIBOR with a fixed rate. This means that a counterparty A pays a fixed rate to counterparty B at specific time intervals and receives the LIBOR. Conversely, counterparty B receives a fixed rate and pays the LIBOR.
+
+#### Pricing Interest Rate Swaps
+Define $T_{\alpha},T_{1},..,T_{\beta - 1}$ as the reset dates of the swap. Also define the fixed rate to be $K$ and the notional to be $N$. The value of the fixed rate leg at initiation $t=0$ is:
+
+$$N \times D(t, T_\alpha) \times \left [\sum_{k=\alpha + 1}^{\beta}\theta_k \times K \times D(T_{\alpha}, T_{k})  + D(T_{\alpha}, T_{n}) \right]$$
+where $D(T_{\alpha},T_{k})$ is the discount factor between $T_{\alpha}$ and $T_{k}$ and $\theta_k$ is the annualized period between $T_{k}$ and $T_{k+1}$.
+
+At initiation, the value of the floating leg is the par value and the value of the swap is 0. That is:
+
+$$N = N \times D(t, T_\alpha) \times \left [\sum_{k=\alpha + 1}^{\beta}\theta_k \times K \times D(T_{\alpha}, T_{k})  + D(T_{\alpha}, T_{n}) \right]$$
+Therefore:
+$$ 1 - D(t, T_{\beta}) = \left [\sum_{k=\alpha + 1}^{\beta}\theta_k \times K \times D(t, T_{k}) \right]$$
+We can therefore obtain the value of the fixed rate $K$:
+$$K = \frac{1 - D(t, T_{\beta})}{\sum_{k=\alpha + 1}^{\beta}\theta_k  \times D(t, T_{k})}$$
+
+### European Swaptions
+A swaption is a combination of an interest rate option and an IRS.
+
+A *european swaption* reserves the right of its holder to enter into a swap contract at a prescribed time and interest rate in the future. From this point, we use swaption and european swaption interchangeably.
+
+The holder of the swaption is said to be _"long the Payer Swaption"_ if the contract allows them the right, not the obligation to pay the fixed rate in exchange for the floating rate. 
+
+Swaptions allow to mitigate the effects of unfavorable interest rates in the future.
+
+
+#### Pricing European Swaptions
+We keep the same definitions for $N$, $D(t, T_{k})$ and  $T_{\alpha},T_{1},..,T_{\beta}$.
+
+We assume the swaption expires at $T_\alpha$ and define:
+
+* $t < T_\alpha$;
+* $K$ as the strike;
+* $\theta$ as the year fraction. We assume this to be uniform for all timesteps.
+
+The value of a payer swaption at  $t$, $\boldsymbol {PS}(t, T_\alpha,T_\beta,\theta,N,K)$ is:
+
+$$\boldsymbol {PS}(t, T_\alpha,T_\beta,\theta,N,K) = N \times D(t, T_\alpha) \times  \left [\sum_{k=\alpha + 1}^{\beta} \theta \times [S_{\alpha, \beta}(t) - K]^{+} \times D(T_{0}, T_{i}) \right]$$
+
+where $[S_{\alpha, \beta}(t) - K]^{+} = max(S_{\alpha, \beta}(t) - K,0)$.
+
+For any $t$, we will have to obtain the forward swap rate $S_{\alpha, \beta}(t)$ and discount factor $D(t, T_\alpha)$ that will be the determining factors in the pricing of the swaption.
+
+
+In the subsequent section, we introduce the Black Model which was the first attempt to model forward rates in general.
+
+
+
+# Black Model 
+We assume our asset follows a geometric Brownian motion:
+$$dS_t = \mu S_tdt + \sigma S_tdW_t$$
+
+In the Black & Scholes Model, $S_t$ represents the spot price. This implies that the numeraire is the risk-free asset. 
+
+In the Black model, however, we are interested in the $S_{\alpha, \beta}(t)$ which is the forward swap rate. 
+
+We therefore have to change the numeraire from the spot continuously compounded risk free asset to $C_{\alpha, \beta} = \sum_{k=\alpha + 1}^{\beta}P(t, T_k)$ which is the sum of zero coupon bonds matching the payment dates for the underlying swaption. 
+
+The Radon Nikodym Theorem^[cf. [Change of the Numeraire]] allows us to do so. The result is a new diffusion under the forward swap risk neutral measure $Q^{\alpha, \beta}$ is:
+
+$$dS_{\alpha, \beta}(t) = \sigma_{\alpha, \beta} S_{\alpha, \beta}(t) dW_t^{\alpha, \beta}$$
+
+We note that $\sigma_{\alpha, \beta}$ is a constant in this model. We also observe an assumption of lognormal forward swap rates.
+
+## Swaption Pricing under the Black Model
+Under forward swap risk neutral assumptions, the value of a payer swaption is:
+$$\boldsymbol {PS}(t, T_\alpha,T_\beta,\theta,N,K) = N \times \left [\sum_{k=\alpha + 1}^{\beta} \theta \times \boldsymbol{\mathbb{E}^{\alpha, \beta}} [(S_{\alpha, \beta}(t) - K)^{+}|\mathcal{F_i}] \times P(t, T_{k}) \right]$$
+Using this and the Brownian motion under the forward measure $Q^{\alpha, \beta}$, we obtain the value of a payer swaption to be:
+$$\boldsymbol {PS}^{Black}(t, T_\alpha,T_\beta,\theta,N,K) = N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} [S_{\alpha, \beta}(t) \times \Phi(d_1) - R \times \Phi(d_2)] \times P(t, T_{k}) \right]$$
+and the value of a receiver swaption to be:
+$$\boldsymbol {RS}^{Black}(t, T_\alpha,T_\beta,\theta,N,K) = N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} [R\times\Phi( -d_2) - S_{\alpha, \beta}(t)\times \Phi(-d_1)] \times P(t, T_{k}) \right]$$
+
+where:
+$$d_1 = \frac{log(\frac{S_{\alpha, \beta}(t)}{R}) + \frac{\sigma_B^2(T_\alpha - t)}{2}}{\sigma_B\sqrt{T_\alpha - t}} $$
+and 
+$$ d_2 = d_1 - \sigma_B \sqrt{T_\alpha - t}$$
+
+## Limitations of the Black Model
+The Black Model is elegant and relatively straightforward. However, the assumptions behind the model do not entirely mirror those of the market.
+
+We will list these shortcomings below and provide a short description:
+
+1. **Lognormal distribution:** The assumption that prices are lognormally distributed does not bear out in the market. 
+    * The result is instability in calibration i.e. a different $\sigma_{\alpha, \beta}$ for each strike & maturity.
+    * The Model therefore does not capture volatility smile dynamics.
+
+2. **Vega & Delta Risks not correctly captured: **
+    * The above problem implies that there is essentially a different model for each strike and maturity
+    * In addition, the sensitivities may also not be accurately represented which may be problematic during cross-hedging
+    * Vega and Delta risks may be difficult to dissociate because $\sigma_B$ varies with K.
+
+#### Note
+* We recall finally that prices are quoted in **black implied volatility.**
+* For any subsequent model, therefore, our objective is to **obtain volatility parameters that we can plug into the Black model** to correctly capture this volatility.
+* The success of any model will be based on its ability to capture these dynamics.
+* We seek to address these points individually in the subsequent sections.
+
+
+# DD CEV LMM Diffusion
+In this section, we begin from the standard LMM and build up to the CEV LMM and finally add a displacement to the diffusion.
+
+This section will, therefore be divided into the following sub-sections:
+
+1. **Standard LMM:** We give a full description of the standard LMM for **swaptions pricing**;
+2. **CEV LMM Extension:** We extend the standard LMM to accommodate a power function;
+3. **DD CEV LMM:** We introduce a displacement.
+
+## Standard LMM
+The LMM is a very popular model in the market. This is because using these models, we are able to obtain volatility parameters that can be plugged into the Black model to obtain prices for two of the most important instruments in the market: caps and swaptions.
+
+Considering that quotes are made in Black implied volatility, this is a very interesting feature for practitioners.
+
+We note, however, that the models used to price the caps (Lognormal Forward Model) and swaptions(Lognormal Forward-Swap Model) are not compatible i.e. using one model, we do not arrive at the same results as the other when pricing both instruments. For the curious reader, this has been shown in the appendix^[cf. [Inconsistency between the LFM and LSM]].
+
+We will not only show that it is more intuitive to use the LFM for swaption pricing but also provide approximations that allow us to obtain reasonably accurate results.
+
+### Lognormal Forward Model (LFM)
+We begin by defining the forward rate at $k$ as $F_k(t)$. We can define this rate as:
+$$F_k(t) = \frac{P(t, T_{k-1}) - P(t, T_k)}{\tau_k P(t, T_k)}$$
+where $P(t, T_k)$ is the price of a zero coupon bond maturing at $T_k$ and $\tau_k$ is the time difference between $T_{k-1}$ and $T_k$.
+
+We define $P(, T_k)$ as the numeraire with an associated measure $Q^k$.
+
+This makes $F_k(t)$ a driftless martingale and we can define its diffusion as:
+$$
+dF_k(t) = F_k(t)\sigma_k(t)^TdZ^k(t)$$
+where $\sigma_k(t)$ is a d-dimensional vector function and $Z^k$ is a d-dimensional Brownian motion under the measure $Q^k$.
+
+We also note that the component Brownian motions are independent i.e.
+$$\langle dZ_i, dZ_j \rangle = 0 \;\; for \; i,j \in \{1,..d\}, \; i \neq j$$
+
+#### Forward Rate dynamics under different numeraires in the LFM
+In the above setup, we have used the corresponding $Q^k$ measure for the $F_k(t)$ rate. We now consider different measures $Q^i$ where $t < min(T_i, T_{k-1})$. We therefore use the change in numeraire toolkit.
+
+We already have the dynamics for $i = k$. We obtain the rest of the dynamics i.e.:
+$$\begin{aligned}
+i< k \; \;dF_k(t) &= \sigma_k(t)^TF_k(t) \left[ \sum_{j = i+1}^k 
+\frac{\rho_{k, j}\tau_j \sigma_j(t)F_j(t)}
+{1 + \tau_k F_j(t)}+dZ^i(t)\right] \\
+i> k \; \;dF_k(t) &= \sigma_k(t)^TF_k(t) \left[- \sum_{j = i+1}^k 
+\frac{\rho_{k, j}\tau_j \sigma_j(t)F_j(t)}
+{1 + \tau_k F_j(t)}+dZ^i(t)\right] \\
+\end{aligned}$$
+Here, $Z^i$ is a Brownian motion under the measure $Q^i$. The proof of this has been given in depth in Brigo, Mercurio(2001).
+
+#### Cap pricing using LFM
+In this sub-section, we demonstrate how simple it is to price caplets in the LFM. The very same method is used in the LSM for pricing swaptions. We do this to show the inconsistency between the LFM and LSM in a later sub-section.
+
+We consider a cap whose first reset date is $T_\alpha$ and maturity $T_\beta$. The discounted payoff is given by:
+$$\begin{aligned}
+\boldsymbol {Cp}(t, T_\alpha,T_\beta,\theta,N,K) &= N \times \sum_{i = \alpha + 1}^{\beta} \theta_i P(0, T_i)[F_i(T_{i-1}) - K]^+ \\
+&= N \times \sum_{i = \alpha + 1}^{\beta} \theta_i P(0, T_i){\mathbb{E}^i}[(F_i(T_{i-1}) - K)^+]
+\end{aligned}$$
+We observe that for each maturity, a different measure is used in the calculation of the expectation. In effect, only the marginal distributions of the forward rates are required in pricing a cap.
+
+A significant contrast will be shown for swaption pricing where the joint distribution will be shown to be important.
+
+The price of each caplet can therefore be obtained as:
+$$\begin{aligned}
+\boldsymbol {Cpl^{LFM}}(t, T_{k-1},T_k,\theta,N,K) &= \boldsymbol {Cpl^{BLack}}(t, T_{k-1},T_k\theta,N,K)  \\
+&=P(0, T_k)Bl(K, F_k(0), v_k)\\
+&=P(0, T_k)[F_i(0)\Phi(d_1(K, F_k(0),v_k)) - K\Phi(d_2(K, F_k(0),v_k))]\\
+where:\\
+d_1(K, F_k(0),v_k) &= \frac{ln(F_k(0)/K) + v_k^2/2}{v}\\
+d_2(K, F_k(0),v_k) &= d_1 - v_k\\
+and:\\
+v_k^2 &= \int_0^{T_{k-1}}\sigma_k(s)^2 ds  
+\end{aligned}$$
+
+### Swaption Pricing under the LFM
+Before proceeding to an extension of the LFM it is important to provide an analytical approximation of swaption prices under this model. As we have noted, the distribution of swap prices under this model is not entirely lognormal. **However, it is very close to being so.** This justifies the approximations used in the proceeding steps.
+
+We recall the diffusion for a specific forward rate $F_k(t)$ under the numeraire $P(.,T_\alpha)$ and its accompanying measure:
+
+$$\begin{aligned}
+dF_k(t) = \sigma_k(t)^TF_k(t) \left[ \sum_{j = \alpha+1}^{k} \frac{\rho_{k, j}\tau_j \sigma_j(t)F_j(t)}{1 + \tau_k F_j(t)}+dZ^\alpha(t)\right]
+\end{aligned}$$
+
+noting that $Z^\alpha$ is the Brownian motion under the measure $Q^\alpha$.
+
+We also recall the definition of the swap rate:
+$$\begin{aligned}
+S_{\alpha, \beta}(t) &=\frac{P(t, T_{\alpha}) - P(t, T_{\beta})}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)}\\
+&=\frac{\sum_{k=\alpha+1}^{\beta} P(t, T_{k-1}) - P(t, T_k))}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)}\\
+but&:\\
+&\sum_{k=\alpha+1}^{\beta} P(t, T_{k-1}) - P(t, T_k) \;  \times \frac{P(t, T_K) \tau_k}{P(t, T_K) \tau_k} =  \sum_{k=\alpha+1}^{\beta} F_k(t) \times \tau_k P(t, T_k) \\
+therefore&: \\
+S_{\alpha, \beta}(t) &= \frac{\sum_{k=\alpha+1}^{\beta}\tau_k P(t, T_k)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)} \times F_k(t)
+\end{aligned}$$
+
+This allow us to express the swap rate in terms of the component forward rates.
+
+We can denote $\frac{\tau_k P(t, T_k)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)}$
+
+as weights $w_k(t)$and represent the swap rate as a weighted average of forward rates:
+$$\begin{aligned}
+S_{\alpha, \beta}(t) &= \sum_{k=\alpha+1}^{\beta} w_k(t)F_k(t)
+\end{aligned}$$
+
+From this representation of the swap rate, we can, similarly, define the diffusion of the swap rate under the LFM framework:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &=  \sum_{k=\alpha +1}^{\beta}\frac{\partial S_{\alpha, \beta}(t)}{\partial F_k(t)} \times F_k(t) \sigma_k(t)^T dZ^\alpha(t) \\
+&= \sum_{k=\alpha +1}^{\beta}\frac{\partial S_{\alpha, \beta}(t)}{\partial F_k(t)} \times F_k(t) \times \frac{S_{\alpha, \beta}(t)}{S_{\alpha, \beta}(t)}\sigma_k(t)^T dZ^\alpha(t)
+\end{aligned}$$
+
+This allows us to explicitly include the swap rate in the diffusion.
+
+We denote $\frac{\partial S_{\alpha, \beta}(t)}{\partial F_k(t)} \frac{F_k(t)}{S_{\alpha, \beta}(t)}$
+as the new weights $\gamma_k(t)$
+
+Our final diffusion, therefore, is:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &=  \sum_{k=\alpha +1}^{\beta} \gamma_k(t) S_{\alpha, \beta}(t)\sigma_k(t)^TdZ^\alpha (t)\\
+&=\sum_{i=1}^d\sum_{k=\alpha +1}^{\beta} \gamma_k(t) S_{\alpha, \beta}(t)\sigma_k^q(t)dZ_q^\alpha (t)
+\end{aligned}$$
+
+#### Approximating swaption variance
+The diffusion above is now compatible with the Black model. However, we need to find the variance corresponding to $v_k^2 = \int_0^{T_{k-1}}\sigma_k(s)^2 ds$ for cap pricing.
+
+We will use one such approximation proposed by Hull & White (1998) where the variance rate of $S_{\alpha, \beta}(t)$ is:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2(t) = \sum_{q = 1}^{d} \left[\sum_{k = \alpha + 1}^{\beta}\gamma_k(t)\sigma_k^q(t) \right]^2
+\end{aligned}$$
+
+We observe that these component variances are being summed because the component brownian motions in the multidimensional Brownian motion are independent.
+
+We also note that this volatility is stochastic. To obtain a deterministic volatility, we freeze the weights, implying that our deterministic volatility is the average rate of $S_{\alpha, \beta}(t)$ between time zero and $T_\alpha$.
+
+Our final variance, therefore is:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2 = \frac{1}{T_\alpha}\sum_{j = 0}^{\alpha}\tau_j
+\sum_{q = 1}^{d} \left[\sum_{k = \alpha + 1}^{\beta}\gamma_k(0)\sigma_k^q(T_\alpha) \right]^2
+\end{aligned}$$
+
+This deterministic $\sigma_{\alpha, \beta}$ can therefore be plugged into the Black formula to obtain the price.
+
+
+### Volatility Dynamics & Rebonato Approximation
+In Andersen and Andreasen (1997), the volatility term is defined to be:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2 = \frac{1}{T_\alpha}\int_t^{T_\alpha} \vert\vert\gamma(u)\sigma(u) \vert \vert_2 du
+\end{aligned}$$
+
+for $\gamma(u)$ the vector of _"frozen"_ scalar weights and $\sigma$ the matrix of all vector functions $\sigma_k(t)$.
+
+We can expand this expression to:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2 &= \frac{1}{T_\alpha}\int_t^{T_\alpha} \vert\vert\gamma(u)\sigma(u) \vert \vert_2^2 du \\
+&= \frac{1}{T_\alpha}\int_t^{T_\alpha} \vert\vert\ \sum_{k = \alpha + 1}^{\beta}\gamma_k(u)\sigma_k(u) \vert \vert_2^2 du \\
+&= \frac{1}{T_\alpha}\int_t^{T_\alpha} \sum_{i, j = \alpha + 1}^{\beta} \gamma_i(u) \gamma_j(u) \; \langle \sigma_i(u), \sigma_j(u) \rangle \; du \\
+\end{aligned}$$
+
+At this juncture it is important to note that $\sigma_k(t)$ is of the same dimension as the Brownian motion i.e. $\sigma_k(t)$ is d-dimensional.
+
+It is also important to note that $\gamma_k(t)$ are the frozen weights $w_k(t) \times \frac{F_k(t)}{S_{\alpha, \beta}(t)}$. These are *scalars*.
+
+We therefore expand the inner product:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2 &= \frac{1}{T_\alpha}\int_t^{T_\alpha} \sum_{i, j = \alpha + 1}^{\beta} \gamma_i(u) \gamma_j(u) \; \langle \sigma_i(u), \sigma_j(u) \rangle \; du \\
+&= \frac{1}{T_\alpha}\int_t^{T_\alpha} \sum_{i, j = \alpha + 1}^{\beta} \gamma_i(u) \gamma_j(u) \sum_{q = 1}^{d}\sigma_i^q(u)\sigma_j^q(u) du\\
+&= \frac{1}{T_\alpha}\int_t^{T_\alpha} \sum_{q = 1}^{d} \sum_{i, j = \alpha + 1}^{\beta} \gamma_i(u) \gamma_j(u) \sigma_i^q(u)\sigma_j^q(u) du
+\end{aligned}$$
+
+At this point, we can freeze our weights and re-express the $\gamma_k(t)$ terms for a more intuitive expression:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2 &= \frac{1}{T_\alpha}\int_t^{T_\alpha} \sum_{q = 1}^{d} \sum_{i, j = \alpha + 1}^{\beta} \frac{w_i(0) w_j(0)F_i(0)F_j(0) \sigma_i^q(u)\sigma_j^q(u)}{S_{\alpha, \beta}(0)^2} du
+\end{aligned}$$
+
+This expression is the **Rebonato approximation of the swaption LFM volatility term.**
+
+Discretizing the term, we obtain:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2 &= \frac{1}{T_\alpha}\sum_{n=0}^{T_\alpha}T_{n+1} - T_n \sum_{q = 1}^{d} \sum_{i, j = \alpha + 1}^{\beta} \frac{w_i(0) w_j(0)F_i(0)F_j(0) \sigma_i^q(u)\sigma_j^q(u)}{S_{\alpha, \beta}(0)^2} du
+\end{aligned}$$
+
+This approximation applies to all extensions.
+
+## CEV LLM Extension 
+We use the standard LMM forward model and extend this based primarily on the work of the Andersen & Andreasen (1998) and Hull & White(1999).
+
+Extending on the standard LMM, we find an approximation for the volatility term $\sigma_{\alpha, \beta}$. However, in this case, that finding the volatility term, as we did in the standard LMM will not be enough.
+
+This $\sigma_{\alpha, \beta}$ term can be applied to a separate closed form formula that we will detail. However, this formula is too computationally expensive.
+
+It is for this reason that, using our $\sigma_{\alpha, \beta}$ term, we will use the Hagan approximation which is a much more efficient method computationally for a minimal cost in pricing accuracy.
+
+This section, therefore, will be composed of the following parts:
+
+1. **CEV LLM Diffusion:** We extend the standard LMM methodology to obtain a CEV LMM diffusion. We obtain a $\sigma_{\alpha, \beta}$ that can be plugged into 
+2. **CEV Closed form Pricing:** We introduce the closed form CEV swaption pricing formula. We note, however, that this formula is **very computationally costly.**
+
+
+### CEV LMM Diffusion
+We begin with defining a new diffusion for the forward rate $F_k(t)$:
+$$dF_k(t) = \; ...dt + (F_k(t))^\eta \sigma_k(t)^TdZ^\alpha(t)$$
+
+We can define the swap rate as before:
+$$S_{\alpha, \beta}(t) = \sum_{k=\alpha+1}^{\beta} w_k(t)F_k(t)$$
+
+And define the new diffusion as:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &=  \sum_{k=\alpha +1}^{\beta}\frac{\partial S_{\alpha, \beta}(t)}{\partial F_k(t)} \times F_k(t)^\eta \sigma_k(t)^T dZ^\alpha(t) \\
+&= \sum_{k=\alpha +1}^{\beta}\frac{\partial S_{\alpha, \beta}(t)}{\partial F_k(t)} \times F_k(t)^\delta \times \frac{S_{\alpha, \beta}(t)^\eta}{S_{\alpha, \beta}(t)^\eta}\sigma_k(t)^T dZ^\alpha(t)
+\end{aligned}$$
+
+And define our weights $\gamma _k(t)$ to be:
+$$\gamma _k(t) = \frac{\partial S_{\alpha, \beta}(t)}{\partial F_k(t)}.\frac{F_k(t)^\eta}{S_{\alpha, \beta}(t)^\eta}$$
+
+Our resulting diffusion is therefore:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t)&=\sum_{i=1}^d\sum_{k=\alpha +1}^{\beta} \gamma_k(t) S_{\alpha, \beta}(t)^\eta\sigma_k^q(t)dZ_q^\alpha (t)
+\end{aligned}$$
+ 
+ We freeze the weights similar to the standard LMM to obtain the volatility term:
+ $$\begin{aligned}
+\sigma_{\alpha, \beta}^2 = \frac{1}{T_\alpha}\sum_{j = 0}^{\alpha}\tau_j
+\sum_{q = 1}^{d} \left[\sum_{k = \alpha + 1}^{\beta}\gamma_k(0)\sigma_k^q(T_\alpha) \right]^2
+\end{aligned}$$
+
+### DD CEV LMM Diffusion
+We apply the same techniques to obtain the final diffusion:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t)&=\sum_{i=1}^d\sum_{k=\alpha +1}^{\beta} \gamma_k(t) [S_{\alpha, \beta}(t) + \delta]^\eta\sigma_k^q(t)dZ_q^\alpha (t)
+\end{aligned}$$
+
+and the volatility dynamics:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2 &= \frac{1}{T_\alpha}\sum_{j = 0}^{\alpha}\tau_j
+\sum_{q = 1}^{d} \left[\sum_{k = \alpha + 1}^{\beta}\gamma_k(0)\sigma_k^q(T_\alpha)[F_k(0)+\delta]^\eta \right]^2 \\
+&= \frac{1}{T_\alpha}\sum_{j = 0}^{\alpha}\tau_j
+\sum_{q = 1}^{d} \left[\sum_{k = \alpha + 1}^{\beta} w_k(0)\sigma_k^q(T_\alpha)\left(\frac{F_k(0)+\delta}{S_{\alpha, \beta}(0) + \delta}\right)^\eta  \;\right]^2
+\end{aligned}$$
+
+The Rebonato variance approximation, therefore is:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2 &= \frac{1}{T_\alpha}\sum_{n=0}^{T_\alpha}T_{n+1} - T_n \sum_{q = 1}^{d} \sum_{i, j = \alpha + 1}^{\beta} \frac{w_i(0) w_j(0)[F_i(0)+ \delta]^\eta \; [F_j(0)+\delta]^\eta \sigma_i^q(u)\sigma_j^q(u)}
+{[S_{\alpha, \beta}(0) + \delta]^{2\eta}} 
+\end{aligned}$$
+
+
+
+
+
+### CEV Closed Form Pricing Formula
+In the same way that we input the volatility term to the Black model, the volatility term for the LMM CEV is input into a closed form pricing formula. 
+
+For swaption pricing, the formula is:
+$$\begin{aligned}
+\boldsymbol {PS}^{CEV}(t, T_\alpha,T_\beta,\theta,N,K)& = N \times \theta \times \sum_{k = \alpha + 1}^{\beta}\tau_kP(t, T_k) \left[ S_{\alpha, \beta}(t) - 
+S_{\alpha, \beta}(t)\chi^2(e, f+2, g) - K\chi^2(g, f,e) \right] \\
+\boldsymbol {RS}^{CEV}(t, T_\alpha,T_\beta,\theta,N,K)& = N \times \theta \times \sum_{k = \alpha + 1}^{\beta}\tau_kP(t, T_k) \left[ K -
+S_{\alpha, \beta}(t)\chi^2(,e, f+2, g) - K\chi^2(g, f,e) \right] \\
+where&: \\
+e &= \frac{K^{2(1 - \eta)}}{(1 - \eta)^2 \sigma^2_{\alpha, \beta}T_\alpha}; \;\;\;\;\;\;
+f = \frac{1}{1 - \eta}; \;\;\;\;\;\;
+g = \frac{S_{\alpha, \beta}(t)^{2(1 - \eta)}}{(1 - \eta)^2 \sigma^2_{\alpha, \beta}T_\alpha}
+\end{aligned}$$
+
+# Hagan Approximation
+We have noted in the above section the specific weaknesses of the Black Model in capturing volatility dynamics. In this section, we intend to use an improvement on the Black Model that will provide a solution that can be transcribed into the CEV.
+
+This section has 4 major parts:
+
+1. **Singular Perturbation Methods(SPM):** We give a rapid overview of the singular perturbation theory and its possible application in obtaining an appropriate $\sigma_B$ for our Black model;
+2. **Generalized Black Approach:** We consider a generalized model that allows for approximating equivalent black volatilities for smooth functions of $F(t, T)$ in our diffusion;
+3. **Application of SPM:** We use SPM to solve the equation obtained in the second part;
+4. **CEV Application:** We apply the framework to the CEV Model
+
+
+
+## Singular Perturbation Methods
+Very often, we encounter mathematical problems whose solutions are difficult to find to an exact value. We therefor have to use approximations to find the solutions.
+
+Singular perturbation theory provides a theoretical underpinning that allows us to approximate solutions to problems containing very small parameters that cannot be approximated by simply setting the values to 0. We call this small parameter $\epsilon$. 
+
+We suppose that our problem function is $\psi(x)$. The primary presupposition of the singular perturbation theory is that this function $\psi(x)$ can be expressed as:
+$$\psi(x) = \epsilon^0 \psi_0(x) +\epsilon^1 \psi_1(x) +\epsilon^2 \psi_2(x) + ....\epsilon^n \psi_n(x) \; as \; \epsilon \to 0$$
+In short, 
+$$\psi(x)= \sum_{k=\alpha + 1}^{\beta} \epsilon^i\psi_i(x) \; as \; \epsilon \to 0$$
+The objective is to obtain a system of equations which will allow us to solve for the functions {$\psi_i(x) \; i \in \{1,..n\}$}. Using these, we can approximate the original function $\psi(x)$.
+
+In the case of specific differential equations, this is particularly interesting as expanding the function $\psi_i(x)$ provides a system of easier differential equations that may be much easier to solve. Our problem is one such case.
+
+
+## Generalized Black Approach
+This model generalizes the Black Model to allow for correct pricing of options across strikes and exercise dates without adjustment.
+We define a general diffusion under the forward measure $Q^T$:
+$$dF_t = \alpha(t)A(F_t)dW_t$$
+where $\alpha(t)$ is a deterministic function and $A(F_t)$ is an Arrow-Debreu security.
+
+The value of our swaption at date $t$, therefore is:
+$$\boldsymbol {PS}(t, T_\alpha,T_\beta,\theta,N,K) = N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} D(t, T_{i}) \right]  \boldsymbol{\mathbb{E}^{Q^T}} [(F(t, T_\alpha) - R)^{+}|F(t, T_\alpha) = f]$$
+We simplify this problem by defining the expression and denote the expectation as a function of the time $t$ and forward value $f$. 
+$$Let\; \boldsymbol{\mathbb{E}^{Q^T}} [(F(t, T_\alpha) - R)^{+}|F(t, T_\alpha) = f] = Q(t, f) $$
+Then:
+$$\boldsymbol {PS}(t, T_\alpha,T_\beta,\theta,N,K) = N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} D(t, T_{i}) \right] Q(t, f)$$
+
+The expectation $Q(t,f$ is defined on a probability distribution generated by the process $$dF_t = \alpha(t)A(F_t)dW_t$$. It therefore satisfies the backward Kolmogrov equation^[cf [Backward Kolmogrov Equation]]:
+$$Q_t + \frac{1}{2} \alpha^2(t)A^2(f)Q_{ff} = 0 $$
+with the condition 
+$$Q = [f - R]^{+} \;at \;t = T_\alpha$$
+
+## Application of Singular Perturbation Methods
+### Scaling of parameters
+We recall our differential equation:
+$$Q_t + \frac{1}{2} \alpha^2(t)A^2(f)Q_{ff} = 0 $$
+Many of our parameters have not been scaled and may, therefore, not be appropriate for singular perturbation methods. We therefore perform a simple scaling to enable us to apply the SPM.
+
+We define our $\epsilon$:
+$$\epsilon = A(R) << 1 \; where \;R = strike  $$
+We also define:
+
+$$
+\begin{aligned}
+x &= \frac{1}{\epsilon}(f - R)\\
+Q^*(\tau, f) &= \frac{1}{\epsilon}Q(t, f)\\
+\tau(t) &= \int_t^{T_\alpha}\alpha^2(s)ds\\
+\end{aligned}
+$$
+We calculate the partial derivatives $Q^*_{\tau}$ and $Q^*_{ff}$ 
+$$
+\begin{aligned}
+Q_t &= \epsilon Q_{\tau}^* \frac{\partial \tau}{\partial t} = -\epsilon  Q_{\tau}^* \alpha^2 \\
+Q_f &= \epsilon Q_{x}^* \frac{\partial f}{\partial t} = \frac{-\epsilon  Q_{x}^*}{\epsilon} = - Q_{x}^*  \\
+Q_ff &= \epsilon Q_{x}^* \frac{\partial f}{\partial t} = \frac{ Q_{x}^*}{\epsilon}
+\end{aligned}
+$$
+We therefore replace the values of $A(f)$, $\alpha$, $Q$ and $t$ with $A(x\epsilon + R)$ ,$Q^*$ and $\tau$ to obtain:
+$$\begin{aligned}
+&Q^*_{\tau} - \frac{A^2(x\epsilon + R)}{2 A^2(R)}Q_{ff} = 0\\
+\\
+Boundary \; condition:\\
+&Q^* = x^+ \;at\; \tau = 0\\
+\end{aligned}$$
+
+For the $A(x\epsilon + R)$, we take the Taylor expasion:
+$$\begin{align}
+A(x\epsilon + R) &= A(K) + (x\epsilon )^1\;  A^{(1)}(K)+ ...+(x\epsilon )^n \; A^{(n)}(K).... \;  A^{(n)}(K) \; is \; the \; nth \; derivative \\
+A(x\epsilon + R) &= A(K) [1 + (x\epsilon )^1 \;\upsilon_1....] \;where \; \upsilon_i = \frac{A^{(i)}(K)}{A(K)} \\
+\end{align}$$
+
+We replace the value of $A(x\epsilon + R)$ with the expression above to obtain:
+$$\begin{aligned}
+&Q^*_{\tau} - \frac{1}{2} Q^*_{xx} [1 + (x\epsilon )^1 \; \upsilon_1....]^2 = 0 \\
+&Q^*_{\tau} - \frac{1}{2} Q^*_{xx} = x  \upsilon_1 \; \epsilon Q^*_{xx} + \frac{1}{2}x^2  \epsilon^2 \; (\upsilon_2 + \upsilon_1^2) \; Q^*_{xx} ... \; for \; \tau > 0\\
+\end{aligned}$$
+
+with the same boundary condition.
+
+### Asymptotic Expansion
+We recall the importance of singular perturbation theory and the asymptotic expansion hypothesis behind the former.
+Using the above, we solve the equation by taking the asymptotic expansion of $Q^*$ i.e.
+$$
+Q^*(\tau, x) = Q^0(\tau, x) + \epsilon Q^1(\tau, x) + \epsilon^2 Q^2(\tau, x)...  
+$$
+
+We plug this into the main equation to obtain a system of differential equations:
+
+$$\begin{aligned}
+Q^0 - \frac{1}{2} \;Q_{xx}^0 &= 0\\
+Q^1 - \frac{1}{2} \;Q_{xx}^1 &= \upsilon_1x \; Q_{xx}^0 \\
+Q^2_{\tau} - \frac{1}{2} \;Q_{xx}^2 &= \upsilon_1x \;Q_{xx}^1 + \frac{1}{2}(\upsilon_2 + \upsilon_1^2) \; x^2 Q_{xx}^0\\
+...\\
+\end{aligned}$$
+
+We solve these first 3 orders to obtain the values of $Q^0$, $Q^1$ and $Q^2$ below^[cf. [Solutions to Perturbation Equations]] :
+$$\begin{aligned}
+Q^0(\tau, x) &= x \; N(\frac{x}{\sqrt{\tau}}) + \sqrt{\frac{\tau}{2\pi}}^\; e^{\frac{-x^2}{2\tau}} = \Phi(\tau, x)\\
+Q^1(\tau, x) &= \frac{1}{2} \; x \upsilon_1 \;\tau \; \mathcal{G}(\tau, x) \\
+Q^2(\tau, x) &= \left (f_0(\tau) + f_2(\tau) \; x^2 + f_4(\tau) \;x^4 \right)\; \mathcal{G}(\tau, x) \\
+where \; \mathcal{G}(\tau, x) &=  \frac{1}{2} e^\frac{-x^2}{2\tau}\\
+ f_0(\tau) &= \frac{1}{2} \; \tau^2 \left (\frac{\upsilon}{6} - \frac{\upsilon_1^2}{12} \right) + c \\
+ f_2(\tau) &=  \tau \left (\frac{\upsilon_2^2}{6} - \frac{\upsilon_1^2}{12} \right) + c\tau^{-2} \\
+ f_4(\tau) &=  \frac{\upsilon_1^2}{8} + c\tau^{-4}
+\end{aligned}$$
+
+With these in hand, we are able to construct an approximation of $Q^*$ up to the order of $\mathcal{O}(\epsilon ^2)$.
+
+This is written as:
+
+$$\begin{aligned}
+Q^*(\tau, x) &= Q^0(\tau, x) + \epsilon Q^1(\tau, x) + \epsilon^2 Q^2(\tau, x)... \\
+ &= \Phi  + \epsilon \upsilon_1 \; \tau \; \Phi_{\tau} + \frac{1}{2} \epsilon^2 \;\upsilon_1^2 \;\tau^2 \; x^2\Phi_{\tau \tau} +
+ \epsilon^2 \; \left[ \frac{4\upsilon_2 + \upsilon_1^2}{12} \;x^2 + \frac{2\upsilon_2 - \upsilon_1^2}{12} \;\tau\right] \;\tau \;\Phi_{\tau}
+\end{aligned}$$
+
+We note that the expression above is in fact a Taylor expansion of $\Phi$ around:
+
+$$\begin{aligned}
+\tau + \epsilon \;\upsilon_1\tau\;x + \epsilon^2 \; \left[ \frac{4\upsilon_2 + \upsilon_1^2}{12} \;x^2 + \frac{2\upsilon_2 - \upsilon_1^2}{12} \;\tau\right] \; \tau
+\end{aligned}$$
+
+We denote this value $\tau^*$ and therefore:
+
+$$\begin{aligned}
+Q^*(\tau, x) &\approx \Phi(\tau \; \left[1 + \epsilon \;\upsilon_1\;x + \epsilon^2 \; \left[ \frac{4\upsilon_2 + \upsilon_1^2}{12} \;x^2 + \frac{2\upsilon_2 - \upsilon_1^2}{12} \;\tau\right] \;\right], x)\\
+Denote:
+\tau^* &= \tau \; \left[1 + \epsilon \;\upsilon_1\;x + \epsilon^2 \; \left( \frac{4\upsilon_2 + \upsilon_1^2}{12} \;x^2 + \frac{2\upsilon_2 - \upsilon_1^2}{12} \;\tau\right)\:\right]\\
+  Q^*(\tau, x) &\approx  \Phi(\tau^*, x)
+\end{aligned}$$
+
+### Asymptotic Option Price
+We recall the original swaption pricing formula:
+$$\boldsymbol {PS}(t, T_\alpha,T_\beta,\theta,N,K) = N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} D(t, T_{i}) \right] Q(t, f)$$
+
+We have expressed $Q(t, f)$ as $A(K)Q^*(\tau, x)$ by subsitution and used singular perturbation methods to solve the resultant nackward Kolmogrov equation using singular perturbation techniques.
+
+We can, therefore express the above formula in terms of $\tau$, $x$, $\epsilon$ and $Q^*$:
+$$\begin{aligned}
+\boldsymbol {PS}(t, T_\alpha,T_\beta,\theta,N,K) &= N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} D(t, T_{i}) \right]\epsilon \; Q^*(\tau, x)\\
+ &= N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} D(t, T_{i}) \right]\epsilon \; \Phi(\tau^*, x)\\
+ &= N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} D(t, T_{i}) \right]\epsilon \; \Phi(\tau^*, x)\\
+ &\approx N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} D(t, T_{i}) \right] \; \Phi(\epsilon^2\tau^*, \epsilon x)\\
+\end{aligned}$$
+
+Recall, however, that $x\epsilon =  f - R$ and $\epsilon = A(R)$. Therefore:
+$$\begin{aligned}
+\boldsymbol {PS}(t, T_\alpha,T_\beta,\theta,N,K) &= N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} D(t, T_{i}) \right]\Phi(A^2(R)\tau^*, f - R)\\
+\end{aligned}$$
+
+We note in particular that for the specific case of the Black model, $\alpha(t) =  \sigma(t) $ and $A(F) = F$. We therefore make this substitution into our formula to obtain the Black Price.
+
+### Equivalent Black Volatility
+
+We have obtained an explicit function to calculate the value of a swaption under the Black Model. However, on the trading floor, quotes are made in implied volatility which is then plugged back to the Black formula.
+
+In this section, we intend to find a closed form function that calculates the Black volatility, $\sigma_B$. We plug this $\sigma_B$ back to the Black Model to obtain approximated options prices. 
+
+This sub-section will be key for subsequent sections seeing that the closed form implied volatilty under the CEV is a modification of the function found here.
+
+We begin this sub-section with a recap of the last section. We noted that the value of our payer swaption is:
+
+$$\begin{aligned}
+\boldsymbol {PS}(t, T_\alpha,T_\beta,\theta,N,K) &= N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} D(t, T_{i}) \right]\Phi(A^2(R)\tau^*, f - R)\\
+\end{aligned}$$
+
+where:
+$$\begin{aligned}
+\tau^* &= \tau \; \left[1 + \epsilon \;\upsilon_1\;x + \epsilon^2 \; \left( \frac{4\upsilon_2 + \upsilon_1^2}{12} \;x^2 + \frac{2\upsilon_2 - \upsilon_1^2}{12}
+\;\tau\right)\:\right]
+\end{aligned}$$
+
+making $Q^*(\tau, x) = \Phi(\tau^*, x)$
+
+We note in particular that $\tau^*$ could be defined as $\tau (1 + \phi)$ where:
+$$\begin{aligned}
+\phi = \epsilon \;\upsilon_1\;x + \epsilon^2 \; \left( \frac{4\upsilon_2 + \upsilon_1^2}{12} \;x^2 + \frac{2\upsilon_2 - \upsilon_1^2}{12}
+\;\tau\right)
+\end{aligned}$$
+
+We also consider the Taylor expansion of $\sqrt{1 + y}$:
+
+$$\begin{aligned}
+\sqrt{1 + y} &= 1 + \frac{1}{2}y - \frac{1}{8}y^2 + ... \\
+Substitute \; \phi \; for \; y \;and\; express \; \sqrt{\tau^*}:\\
+\sqrt{\tau^*} &= \sqrt{\tau} \; \left[1 + \frac{1}{2}\phi - \frac{1}{8}\phi^2 ... \right] \\
+\sqrt{\tau^*} &= \sqrt{\tau} \; \left[1 + \frac{1}{2}(f - R) \; \upsilon_1 +  \frac{2\upsilon_2 - \upsilon_1^2}{12} (f - R)^2 + \frac{2\upsilon_2 - \upsilon_1^2}{12}\; A^2(R)  \; + ... \right]
+\end{aligned}$$
+
+We now consider $A(R)$ and do a Taylor expansion around $f_{av} = \frac{f+R}{2}$:
+$$\begin{aligned}
+A(R) &= A(\frac{f+R +R-f}{2}) \\
+&= A(f_{av} + \frac{R-f}{2}) \\
+&= A(f_{av}) + \frac{R-f}{2}A'(f_{av}) + \frac{(R-f)^2}{8} + A''(f_{av}) + ... 
+\end{aligned}$$
+
+We combine these two expansions and re-express $\sqrt{A^2(R)\tau^*}$ in $\Phi(A^2(R)\tau^*, f - R)$. 
+
+We note particularly that $\upsilon_1 = \frac{A'(R)}{A(R)}$ and  $\upsilon_2 = \frac{A''(R)}{A(R)}$ which will be particularly useful in this expansion.
+$$\begin{aligned}
+A(R) \sqrt{\tau^*} &= \sqrt{\tau} \;A(R) \left[1+ \frac{1}{2}(f - R) \; \frac{A'(R)}{A(R)} +  \frac{2\frac{A''(R)}{A(R)} - (\frac{A'(R)}{A(R)})^2}{12} (f - R)^2 + \frac{2\frac{A''(R)}{A(R)} - (\frac{A'(R)}{A(R)})^2}{12}\; A^2(R)  \; + ... \right] \\
+A(R) \sqrt{\tau^*} &= \sqrt{\tau} \left[A(R) + \frac{1}{2}(f - R)A'(R) + \frac{1}{6}(f - R)^2 \;A''(R) + \frac{\upsilon_1}{12}(f - R)^2 \;A(R) + \frac{2\upsilon_2 - \upsilon_1^2}{12}\; A^2(R)\right]\\
+Expand\; A(R) \; &for \; the \; first \; 3 \;terms: \\
+ &= \sqrt{\tau} \left[ \left( A(f_{av}) + \frac{R-f}{2}A'(f_{av}) + \frac{(R-f)^2}{8} + A''(f_{av}) + ... \right) 
+... + \frac{f-R}{2} \left(A'(f_{av}) +  \frac{f-R}{2} A''(f_{av}) + ...  \right) + 
+\frac{(f-R)^2}{6} A''(f_{av}) + \frac{1}{12} A''(f_{av})(f-R)^2 ...
+\right]
+\end{aligned}$$
+
+
+We regroup our like terms and introduce two placeholder terms: 
+$$\gamma_1 = \frac{A'(f_{av})}{A(f_{av})} \;\; \gamma_2 = \frac{A''(f_{av})}{A(f_{av})}$$ 
+
+Our final value of $\sqrt{\tau^*}$ therefore is:
+$$\begin{aligned}
+A(R)\sqrt{\tau^*} = A(f_{av}) \sqrt{\tau} \left[ 1 + \frac{\gamma_2 - 2 \gamma_1^2}{24} (f - R)^2 + \frac{\gamma_2 - 2 \gamma_1^2}{24} A^2(f_{av})\tau  + ...\right]
+\end{aligned}$$
+
+We plug this value back to our formula to obtain the swaption price.
+
+#### Explicit asymptotic solution for the Black Model
+We consider the case of the Black Model:
+
+$$\begin{aligned}
+dF(t) = \sigma_BF(t)dW
+\end{aligned}$$
+
+We replace $A(f_{av})$ with $f_{av}$, $\tau$ with $\sigma^2(T_\alpha - t)$ _(since_ $\tau = \int^{T_\alpha}_t \alpha^2(s)ds$ _)_.
+
+Similarly, $\gamma_1 = \frac{1}{f_{av}}$ and $\gamma_2 = 0$. The value of $A(R)\sqrt{\tau^*} = \tau_B$ ,therefore, is:
+
+$$\begin{aligned}
+\tau_B =  \sigma_B f_{av} \; \sqrt{T_\alpha - t} \left[ 1 - \frac{(f - R)^2}{12 f_{av}} - \frac{\sigma_B(T_\alpha - t)}{24} + ...\right]
+\end{aligned}$$
+
+The price of the swaption under the Black Model, therefore is:
+
+$$\begin{aligned}
+\boldsymbol {PS^{Black}}(t, T_\alpha,T_\beta,\theta,N,K) &= N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} D(t, T_{i}) \right]\Phi(\tau_B, f - R)\\
+\end{aligned}$$
+
+To obtain the equivalent Black volatility, we solve for $\sigma_B$ by equating $A(R)\sqrt{\tau^*}$ to $\sqrt{\tau_B}$:
+
+$$\begin{aligned}
+\sqrt{\tau} \left[ \left( A(f_{av}) + \frac{R-f}{2}A'(f_{av}) + \frac{(R-f)^2}{8} + A''(f_{av}) + ... \right) 
+... + \frac{f-R}{2} \left(A'(f_{av}) +  \frac{f-R}{2} A''(f_{av}) + ...  \right) + ... 
+\right] =  \sigma_B f_{av} \; \sqrt{T_\alpha - t} \left[ 1 - \frac{(f - R)^2}{12 f_{av}} - \frac{\sigma_B(T_\alpha - t)}{24} + ...\right]
+\end{aligned}$$
+
+We obtain as our $\sigma_B$:
+$$\begin{aligned}
+\sigma_B &= â\frac{A(f_{av})}{f_{av}} \left[ 1 + (\gamma_2 - 2\gamma_1^2 + \frac{2}{f^2_{av}}) \frac{(f -K)^2}{24} + 
+(2\gamma_2 - \gamma_1^2 + \frac{1}{f^2_{av}})\frac{â^2A^2(f_{av})(T_\alpha - t)}{24} + ...\right] \\
+where: â &= \sqrt{\frac{1}{T_\alpha - t} \; \tau(t)} 
+\end{aligned}$$
+
+## CEV Application
+We have demonstrated in the previous chapter that using singular perturbation methods, we can find an asymptotic approximation of the swaption price.
+
+In this section we introduce the CEV model and apply the same technique as above to fit the model. It is important to note that in fitting this model, we seek to obtain the equivalent Black volatilty.
+
+We then plug this back to the Black pricer to obtain the value of our swaption. This is a common practice in the market considering quotes are often made in implied volatility.
+
+### Introduction of the CEV Model
+This model was introduced by Cox in 1975 with the objective of capturing stochastic volatility and leverage effects. The CEV stochastic process is:
+
+$$dF =  \sigma(t)F^\beta dW \; where \; 0 < \beta$$
+We note that at $\beta = 0$ leads to normal dynamics. On the other hand, at $\beta = 1$ we revert to the Black Model.
+
+For different values of $\beta$, the volatility dynamics change. For example, $0 < \beta < 1$ describes the leverage effect where the volatility of the asset increases as the prices fall.
+
+Conversely, $\beta > 1$ describes an inverse leverage effect where volatility increases with prices.
+
+Because of the model is described by a single stochastic process driving both the underlying asset and the volatility, this model enters in the class of _local volatility models._ 
+
+This is in contrast to models such as the SABR have a separate stochastic process defining the volatility. The SABR, in particular, will be described in the section below.
+
+### Equivalent Black volatility for the CEV
+We recall our original forward rate model:
+$$dF_t = \alpha(t)A(F_t)dW_t$$
+We denote $\alpha(t) = \sigma_{CEV}$ and $A(F) = F^\beta$. We then replace these values to find the equivalent Black volatility $\sigma_B$:
+$$\begin{aligned}
+\sigma_B &= â\frac{A(f_{av})}{f_{av}} \left[ 1 + (\gamma_2 - 2\gamma_1^2 + \frac{2}{f^2_{av}}) \frac{(f -K)^2}{24} + 
+(2\gamma_2 - \gamma_1^2 + \frac{1}{f^2_{av}})\frac{â^2A^2(f_{av})(T_\alpha - t)}{24} + ...\right] \\
+&= \frac{\sigma_{CEV}}{f_{av}^{(1 - \beta)}} \left[ 1 + \frac{(1 - \beta)(2 + \beta)}{24} \left( \frac{F(t, T) - K}{f_{av}}\right)^2 + \frac{(1 - \beta)^2}{24} \; 
+\frac{\sigma_{CEV}^2(T_\alpha - t)}{f_{av}^{2 - 2\beta}} + ...
+\right]
+\end{aligned}$$
+
+We input this $\sigma_B$ into the Black pricer to obtain the value of the swaption.
+
+## Displaced Diffusion CEV (DD CEV)
+
+The stochastic process defining the DD CEV is provided below:
+$$dF =  \sigma(t) (F + \delta)^{\beta}dW$$
+We note that the diffusion is effectively shifted as the name suggests. We also note that substituting this into the general form:
+$$dF_t = \alpha(t)A(F_t)dW_t$$
+
+We recall the original asymptotic solution to the equivalent black volatility but provide the solution to $\mathcal{O}(\epsilon^4)$:
+
+$$\begin{aligned}
+\sigma_B = \frac{aA(f_{av})}{f_{av}} \left[ 1 + \frac{\Delta}{24} \left( 2\gamma_2 - \gamma_1^2 + \frac{1}{f^2_{av}}\right) \; + 
+\frac{\theta^2}{24} \left(\gamma_2 - 2\gamma_1^2 + \frac{2}{f^2_{av}}\right) \; + 
+\frac{\Delta^2}{480} \left(2\gamma_4 + 4\gamma_1 \gamma_3 - 3\gamma_2^2 + 3\gamma_1^2\gamma_2 + \frac{3}{4} \gamma^4_1 -  \frac{3}{4f^4_{av}}  +
+\frac{10\gamma_2 - 5\gamma_1^2 + 5/f_{av}^2}{2f_{av}}\right) \: +
+\frac{\Delta \theta^2}{2880} \left(6\gamma_4 - 18\gamma_1 \gamma_3 + 14\gamma_2^2 - 29\gamma_1^2\gamma_2 + 11 \gamma^4_1 - \frac{11}{f^4_{av}} + 
+\frac{35\gamma_2 - 40\gamma_1^2 + 40/f_{av}^2}{f_{av}}\right) \: +
+\frac{\theta^4}{1440} \left(\frac{3}{4}\gamma_4 - 6\gamma_1 \gamma_3 - 2\gamma_2^2 + 17\gamma_1^2\gamma_2 - 8 \gamma^4_1+ \frac{8}{f^4_{av}} + 
+\frac{5\gamma_2 - 10\gamma_1^2 + 10/f_{av}^2}{f_{av}}\right) \: + \; ... \right]
+\end{aligned}$$
+
+where:
+$$\begin{aligned}
+f_av &= \frac{f+R}{2},  \;\;\;\;\;\;\; \theta = f - R \\
+a &= \sqrt{\frac{1}{T_\alpha - t} \int_t^{T_\alpha} \alpha^2(s) ds} \\
+\Delta &= a^2A^2(f_{av})(T_\alpha - t) \\
+\gamma_1 &= \frac{A'(f_{av})}{A(f_{av})}, \;\; \gamma_2 = \frac{A''(f_{av})}{A(f_{av})}, \;\; \gamma_3 = \frac{A'''(f_{av})}{A(f_{av})}, \;\; \gamma_4 = \frac{A''''(f_{av})}{A(f_{av})} 
+\end{aligned}$$
+
+
+We substitute our values from the above model. That is $\alpha(t) = \sigma_{DD}$ and $A(F) = (F + \delta)^{\beta}$. We therefore obtain our solution for the equivalent Black volatility:
+$$\begin{aligned}
+\sigma_B = \sigma_{DD} \times \frac{(f_{av}+\delta)^\beta}{f_{av}} 
+\left[1 + 
+\frac{\Delta}{24}\left( \frac{\beta (\beta - 1)}{(f_{av})^2} + \frac{1}{f_{av}} \right)+ \;
+\frac{\theta^2}{24}\left( \frac{-\beta (\beta + 1)}{(f_{av})^2} + \frac{2}{f_{av}} \right)+ \;
+\frac{\Delta^2}{1920}\left(\frac{51\beta^4 - 132 \beta^3 + 132 \beta^2 - 48\beta}{4(f_{av}+\delta)^4} + \frac{13}{f_{av}^4} +
+\frac{10\beta}{(f_{av}^2 + \delta f_{av})^2} \right)+ 
+\frac{\Delta\theta^2}{2880} \left( \frac{19\beta^3 + 44\beta^2 - 16\beta^4 - 36\beta}{(f_{av} + \delta)^4} + 
+\frac{199}{f_{av}^4} + 5\frac{(7\beta - \beta^2)}{(f_{av}^2 + \delta f_{av})^2}\right) + \;
+\frac{\theta^4}{1440} \left( \frac{106\beta^3 -7\beta^2 - 49\beta^4 - 36\beta}{4 \times (f_{av} + \delta)^4} + 
+\frac{13}{f_{av}^4} + 5\frac{(-\beta (1 + \beta)}{(f_{av}^2 + \delta f_{av})^2}\right) + \;
+...\right]
+\end{aligned}$$
+
+
+# Appendix
+## Change of the Numeraire
+A numeraire is any positive non-dividend-paying asset. In the fundamental theory of asset pricing, the numeraire is the reference asset, whose role is to normalize the price of all assets in the universe.
+
+In a complete market, if there exists an equivalent martingale measure $Q$, then for any attainable contingent claim $H$, at any point in time $t < T$, there exists a unique price $\pi_t$ such that:
+$$\pi_t = \boldsymbol{\mathbb{E}^Q}[D(t, T)H|\mathcal{F_t}]$$
+for a filtration $\{\mathcal{F_t}\} \; t \in \; \{0,..,T\}$
+
+However, in the computation of the expectation, the $D(t, T)$ term may cause a myriad of problems. It may therefore be easier to change the reference asset to allow for easier computation. This is called **the change in numeraire technique.**
+
+We want to demonstrate that this is possible and does not break any of the no arbitrage principles.
+
+#### Preliminary definitions
+We define $N(t)$ an accumulation factor ie
+$$N(t) = exp \left(\int_\alpha^tr(u)du \right)$$
+for a non-deterministic interest rate $r(t)$.
+
+Under risk neutral assumptions, we know that for $S(t)$, the asset price, $\frac{S(t)}{N(t)}$ is a martingale under the price process:
+$$d \left(\frac{S(t)}{N(t)} \right) = \frac{S(t)}{N(t)} \sigma (t) dW(t)$$
+For a zero coupon bond $B(t, T)$, our price is:
+$$\begin{aligned}
+B(t, T) &= \boldsymbol{\mathbb{E}} \left[ exp \left( - \int_t^T r(u)du\right) |\mathcal{F_t}\right]\\
+&= \boldsymbol{\mathbb{E}} \left[ \frac{N(t)}{N(T)} |\mathcal{F_t}\right]
+\end{aligned}$$
+
+Under risk neutral assumptions, the ZCBond is also a martingale:
+$$\begin{aligned}
+B(t, T) = \boldsymbol{\mathbb{E}} \left[ \frac{N(t)}{N(T)N(t)}|\mathcal{F_t} \right] = \boldsymbol{\mathbb{E}} \left[\frac{1}{N(T)} |\mathcal{F_t}\right]
+\end{aligned}$$
+
+We also note that the forward price $F(t, T)$ is defined as:
+$$F(t, T) = \frac{S(t)}{B(t, T)}$$
+
+#### Proposition 1
+We let $U$ be a numeraire, then $\boldsymbol{\mathbb{P}_U}$ is defined as:
+$$\boldsymbol{\mathbb{P}_U} = \frac{1}{U(0)} \int_A \frac{U(T)}{N(T)} d\boldsymbol{\mathbb{P}}, \forall \;A \in \;\mathcal{F_T} $$
+and $\boldsymbol{\mathbb{P}_U}$ is risk neutral.
+
+To prove this, we consider $\boldsymbol{\mathbb{P}_U}(\Omega)$:
+$$\begin{aligned}
+\boldsymbol{\mathbb{P}_U}(\Omega) &= \frac{1}{U(0)}\int_{\Omega} \frac{U(T)}{N(T)}d\boldsymbol{\mathbb{P}}\\
+&= \frac{1}{U(0)}\boldsymbol{\mathbb{E}} \left[\frac{U(T)}{N(T)} \right] \\
+&= \frac{1}{U(0)} \times \frac{U(0)}{N(0)} \\
+&= 1
+\end{aligned}$$
+
+#### Proposition 2
+
+Suppose $Y$ is an asset. Under $\boldsymbol{\mathbb{P}_N}$, $\frac{Y}{N}$ is a martingale. Under  $\boldsymbol{\mathbb{P}_U}$, $\frac{Y}{U}$ is also a martingale.
+
+TO prove this, we use the Radon-Nikodym derivative where for $X$, $\mathcal{F_t}$-measurable, then:
+$$\begin{aligned}
+\boldsymbol{\mathbb{E}_U}[X |\mathcal{F_t} ] &= \frac{U(0)N(t)}{U(t)}\boldsymbol{\mathbb{E}_N} \left[ \frac{U(T)}{U(0)N(T)} X |\mathcal{F_t} \right] \\
+&= \frac{U(t)}{N(t)}\boldsymbol{\mathbb{E}_N} \left[ \frac{U(T)}{N(T)}X |\mathcal{F_t}\right]
+\end{aligned}$$
+
+Therefore:
+$$\begin{aligned}
+\boldsymbol{\mathbb{E}_U}[\frac{Y(T)}{U(T)} |\mathcal{F_t} ] &= \frac{N(t)}{U(t)}\boldsymbol{\mathbb{E}_N} \left[ \frac{U(T)}{N(T)} \frac{Y(T)}{U(T)} |\mathcal{F_t}\right]\\
+&= \frac{N(t)}{U(t)} \frac{Y(t)}{N(t)}\\
+&=\frac{Y(t)}{U(t)}
+\end{aligned}$$
+which is the martingale property for $\frac{Y}{U}$ under $\boldsymbol{\mathbb{P}_U}$.
+
+#### ZCB as the numeraire
+Let the numeraire be $B(t, T)$.
+
+We define the risk neutral measure for the numeraire to be:
+$$
+\begin{aligned}
+\boldsymbol{\mathbb{P}_T} &= \frac{1}{B(0, T)}\int_A \frac{B(T, T)}{N(T)} d\boldsymbol{\mathbb{P}} \\
+&= \frac{1}{B(0, T)}\int_A \frac{1}{N(T)} d\boldsymbol{\mathbb{P}}
+\end{aligned}$$
+
+$\boldsymbol{\mathbb{P}_T}$, therefore, is the **T-forward measure.** This is because the value of a T-maturity ZCB is:
+$$F(t, T) =  \frac{S(t)}{B(t, T)}$$
+This is a martingale under $\boldsymbol{\mathbb{P}_T}$ and therefore has a differential of the form:
+$$dF(t, T) = \sigma_F(t, T) F(t, T)dW(t) \; for  \; 0 ≤ t ≤ T$$
+
+## Backward Kolmogrov Equation 
+Intuitively, at any time $t$, we consider whether a current state $x$ will lie in a set $B$ at a future period $s$. 
+
+We consider the function $u_s(x) = 1_B(x)$. For any current state $x$, we want to find the probability of ending up in state $B$. 
+
+Therefore, $u_s(x)$ serves as a final condition for the PDE which is integrated backward in time from $s$ to $t$.
+
+Formally,for an asset $S_t$ evolving according to the diffusion:
+$$ dS_t =  \mu(S_t, t)dt + \sigma(S_t, t)dW_t$$
+The Kolmogorov backward equation is as follows:
+
+$$\begin{aligned}
+0 &= \frac{\partial}{\partial t}f(x, t) + \mu (x, t) \; \frac{\partial}{\partial x}f(x, t) + \frac{1}{2} \sigma^2(x,t) \frac{\partial ^2}{\partial x^2}f(x, t)
+\end{aligned}$$
+
+The Kolmogorov backward equation can be derived using Itô's Lemma on $f(x, t)$ i.e.
+We define:
+$$\begin{aligned}
+\boldsymbol{\mathbb{E}_{x,t}}[dX_t] &= \mu (X_t, t)  \\
+\boldsymbol{\mathbb{E}_{x,t}} &= \sigma^2 (X_t, t)  \\
+p(x, t) &= \boldsymbol{\mathbb{E}_{x,t}}[V(X_T)] \; for \; V() \; a \;payoff\\
+\end{aligned}$$
+
+From the above, we obtain:
+$$\begin{aligned}
+\boldsymbol{\mathbb{E}_{x,t}}[f(X_{t+dt}, t+dt)] &= \boldsymbol{\mathbb{E}_{x,t}}[f(x + dX + t, t + dt)]\\
+&= \boldsymbol{\mathbb{E}_{x,t}}[f(x,t) + \partial _xf(x, t)dX_t + \frac{1}{2} \partial^2_xf(x,t)dX_t^2 + \partial_t f(x,t)dt]\\
+&=f(x,t) + \partial _xf(x, t)\boldsymbol{\mathbb{E}_{x,t}}[dX_t] + \frac{1}{2} \partial^2_xf(x,t)\boldsymbol{\mathbb{E}_{x,t}}[dX_t^2] + \partial_tf(x,t)dt\\
+\end{aligned}$$
+
+If we let:
+$$\begin{aligned}
+\boldsymbol{\mathbb{E}_{x,t}}[f(X_{t+dt}, t+dt)] &= f(x, t)
+\end{aligned}$$
+
+We obtain;
+$$\begin{aligned}
+0 &= \frac{\partial}{\partial t}f(x, t) + \mu (x, t) \; \frac{\partial}{\partial x}f(x, t) + \frac{1}{2} \sigma^2(x,t) \frac{\partial ^2}{\partial x^2}f(x, t)
+\end{aligned}$$
+
+In our case, we define: $\mu (X_t, t) =  0$ and $\sigma(X_t,t) =  Q(f, t)$.
+
+
+
+
+
+
+
+
+
+
+## Solutions to Perturbation Equations 
+## Asymptotic solution for SABR
+
+
+
+
+
+## Inconsistency between the LFM and LSM
+### Lognormal Forward-Swap Model (LSM)
+In this section, we focus specifically on swaption pricing under the LMM. For this reason, we focus on the LSM. We derive the closed form, Black-compatible price under this model.
+
+This allows for a foundation on which to build in the extension of the model.
+
+We begin by recalling the price of a swaption struck at $K$:
+$$\boldsymbol {PS}(t, T_\alpha,T_\beta,\theta,N,K) = N \times D(t, T_\alpha) \times  \left [\sum_{k=\alpha + 1}^{\beta} \theta \times [S_{\alpha, \beta}(t) - K]^{+} \times P(T_{0}, T_{i}) \right]$$
+We select as the numeraire the "present value for basis point" $C_{\alpha, \beta}(t)$:
+$$C_{\alpha, \beta}(t) = \sum_{k = \alpha + 1}^{B} \tau_k P(t, T_k)$$
+Under this numeraire, and its accompanying measure $Q^{\alpha, \beta}$, $S_{\alpha ,\beta}(t)$ is a driftless martingale with the diffusion:
+$$dS_{\alpha ,\beta}(t) = S_{\alpha ,\beta}(t) \sigma^{\alpha, \beta}(t)^TdZ^{\alpha, \beta}(t)$$
+where $\sigma^{\alpha, \beta}(t)$ is a d-dimensional vector function and $Z^{\alpha, \beta}$ is a d-dimensional Brownian motion.
+
+It can be shown that we can define $\sigma^{\alpha, \beta}(t)^TdZ^{\alpha, \beta}(t)$ as a one dimensional process where:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}(t)Z(t) &= \sigma(t)W(t) \\
+where&: \\
+\sigma(t) &= \vert \vert \sigma_{\alpha, \beta} \vert \vert_d \\
+W(t) &= \frac{\sigma^{\alpha, \beta}(t)}{\vert \vert \sigma_{\alpha, \beta} \vert \vert_d} Z(t)
+\end{aligned}$$
+
+We therefore rewrite our one dimensional diffusion:
+$$dS_{\alpha ,\beta}(t) = S_{\alpha ,\beta}(t) \sigma(t)dW^{\alpha, \beta}(t)$$
+
+#### LSM - Black Pricing Equivalence
+We observe that:
+$$\begin{aligned}
+\boldsymbol {PS^{LSM}}(t, T_\alpha,T_\beta,\theta,N,K) &= \boldsymbol {PS^{Black}}(t, T_\alpha,T_\beta,\theta,N,K)\\
+&= C_{\alpha, \beta}(0)Bl(K, S_{\alpha, \beta}(t), v_{\alpha, \beta}(T_\alpha))\\
+where: \\
+Bl(K, S_{\alpha, \beta}(t), v_{\alpha, \beta}(T_\alpha)) &= S_{\alpha, \beta}(t) \Phi(d_1(K, F_k(0),v_k)) - K\Phi(d_2(K, F_k(0),v_{\alpha, \beta}(T_\alpha)))]\\
+d_1(K, F_k(0),v_k) &= \frac{ln(S_{\alpha, \beta}(t))/K) + v_{\alpha, \beta}(T_\alpha)^2/2}{v_{\alpha, \beta}(T_\alpha)}\\
+d_2(K, F_k(0),v_{\alpha, \beta}(T_\alpha)) &= d_1 - v_{\alpha, \beta}(T_\alpha)\\
+and:\\
+v_{\alpha, \beta}(T_\alpha)^2 &= \int_0^{T_{\alpha}}\sigma(s)^2 ds
+\end{aligned}$$
+
+
+## Proof of Theorem 4.1.2.1
+

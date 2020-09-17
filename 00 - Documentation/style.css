@@ -1,0 +1,31 @@
+#nextsteps {
+   color: #004FB6;
+   font-family: "Helvetica Neue"; 
+   font-size: 3em;
+   background: #FFD900;
+   background-color: #FFD900;
+   display: flex;
+     justify-content: center;
+     align-items: center;
+}
+
+#normalPage {
+   color: #004FB6;
+   font-size: 3em;
+   font-family: "Helvetica Neue";
+   background: #FFD900;
+   background-color: #FFD900;
+   display: flex;
+     justify-content: center;
+     align-items: center;
+}
+
+h1 {
+   font-family: "Helvetica Neue";
+   color: #87378E;
+}
+body {
+   font-family: "Helvetica Neue";
+   color: #073C29;
+   background-color: #E5EDF8;
+}

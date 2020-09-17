@@ -1,0 +1,341 @@
+---
+title: "Displaced Diffusion CEV LLM"
+date: "17th February 2019"
+output: 
+  slidy_presentation: 
+    css: style.css
+    logo: logo.png
+---
+
+```{r, echo=FALSE}
+logo<-"logo.png"
+```
+
+## Defining Forward and Forward Swap Rates
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+We define:
+
+1. The forward rate $F_k(t)$ 
+2. The forward swap rate $S_{\alpha, \beta}(t)$ as **_a weighted average of forward rates_**.
+
+We let $\alpha$ denote the time index at initiation of the swap and $\beta$ the maturity. 
+
+> - Then:
+$$\begin{aligned}
+F_k(t) &= F(t; T_{k-1}, T_k) = \frac{P(t, T_{k-1}) - P(t, T_k)}{\tau_k P(t, T_k)} \\
+S_{\alpha, \beta}(t) &= \frac{P(t, T_{\alpha}) - P(t, T_{\beta})}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)}
+\end{aligned}$$
+
+> - We define the swap in terms of $F_k(t)$:
+$$\begin{aligned}
+P(t, T_{\alpha}) - P(t, T_{\beta}) &= \sum_{k=\alpha+1}^{\beta} P(t, T_{k-1}) - P(t, T_k) \\
+&= \sum_{k=\alpha+1}^{\beta} P(t, T_{k-1}) - P(t, T_k) \;  \times \frac{P(t, T_K) \tau_k}{P(t, T_K) \tau_k}
+&= \sum_{k=\alpha+1}^{\beta} F_k(t) \times \tau_k P(t, T_k)
+\end{aligned}$$
+
+## Forward Swap Rates as Weighted Average Forwards
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+Therefore we replace $P(t, T_{\alpha}) - P(t, T_{\beta})$ with the expression in the previous page:
+$$\begin{aligned}
+S_{\alpha, \beta}(t) &= \frac{\sum_{k=\alpha+1}^{\beta} F_k(t) \times \tau_k P(t, T_k)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)}
+\end{aligned}$$
+
+> - We define the weights $w_k(t)$ as:
+$$\begin{aligned}
+w_k(t) = \frac{\tau_k P(t, T_k)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)}
+\end{aligned}$$
+
+> - Therefore:
+$$\begin{aligned}
+S_{\alpha, \beta}(t) &= \sum_{k=\alpha +1}^{\beta} w_k(t)F_k(t)
+\end{aligned}$$
+
+## Defining the Diffusion
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+In the shifted LMM, we assume our forward $F_k(t)$ under forward measure $Q^k$ and numeraire $P(, T_k)$ has the diffusion:
+$$dF_k(t) = \sigma(t)[F_k(t) - \alpha_k]dZ_t^k$$
+We know that the forward swap $S_{\alpha, \beta}(t)$ is a smooth function of the forward rates $F_{\alpha +1}, ... , F_\beta$.
+
+### Change of numeraire
+Define the new numeraire $\sum_{k=\alpha +1}^{\beta} \tau_kP(t, T_k)$. 
+
+_(Radon Nikodym Thrm)_ Can be proven that the forward swap $S_{\alpha, \beta}(t)$ is a martingale under the forward swap measure $Q^{\alpha,  \beta}$
+
+> - We therefore define the following dynamics for $S_{\alpha, \beta}(t)$:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &=  \sum_{k=\alpha +1}^{\beta} \frac{\partial S_{\alpha, \beta}(t)}{\partial F_k(t)} \times dF_k(t) \\
+&=  \sum_{k=\alpha +1}^{\beta} \frac{\partial S_{\alpha, \beta}(t)}{\partial F_k(t)} \times \sigma_k(t)[F_k(t) - \alpha_k]dZ_k^{\alpha, \beta}(t)
+\end{aligned}$$
+
+## Defining the Diffusion (2)
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+We know from the definition of $S_{\alpha, \beta}(t)$ that:
+$$\begin{aligned}
+S_{\alpha, \beta}(t) &= \frac{\sum_{k=\alpha+1}^{\beta}\tau_k P(t, T_k) \times F_k(t)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)}\\
+\frac{\partial S_{\\alpha, \beta}(t)}{\partial F_k(t)} &= \frac{\tau_k P(t, T_k)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)}
+\end{aligned}$$
+
+> - Therefore:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= \sum_{k=\alpha+1}^{\beta}\frac{\tau_k P(t, T_k)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)}  \times \sigma_k(t)[F_k(t) - \alpha_k]dZ_k^{\alpha, \beta}(t) \\
+&= \sum_{k=\alpha+1}^{\beta} w_k(t) \times \sigma(t)[F_k(t) - \alpha_k]dZ_k^{\alpha, \beta}(t)
+\end{aligned}$$
+ 
+## Defining the Diffusion (3)
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+We want to represent all the $F_k(t)$ in terms of $S_{\alpha, \beta}(t)$.
+
+> - To do this, we consider the weight term $w_k(t)$:
+$$\begin{aligned}
+w_k(t) &= \frac{\tau_k P(t, T_k)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)} \\
+&= \frac{\tau_k P(t, T_k)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)} \times 
+\frac{\sum_{h=\alpha +1}^{\beta} \tau_h P(t, T_k) [F_h(t) + \alpha_h]}{\sum_{h=\alpha +1}^{\beta}\tau_h P(t, T_k) [F_h(t) + \alpha_h]}\\
+&=\frac{\tau_k P(t, T_k)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)  [F_h(t) + \alpha_h]} \times 
+\frac{\sum_{h=\alpha +1}^{\beta} \tau_h P(t, T_k) F_h(t) + \sum_{h=\alpha +1}^{\beta} \tau_h P(t, T_k) \alpha_h }
+{\sum_{h=\alpha +1}^{\beta}\tau_h P(t, T_k) [F_h(t) + \alpha_h]} \\
+\end{aligned}$$
+
+
+> - At this point it is important to recall the definition of the swap as a weighted average of forward rates. This allows us to represent $w_k(t)$ in the following manner:
+$$\begin{aligned}
+w_k(t) &=\frac{\tau_k P(t, T_k)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)  [F_h(t) + \alpha_h]} \times
+\left[S_{\alpha, \beta}(t) + \frac{\sum_{h=\alpha +1}^{\beta} \tau_h P(t, T_k) \alpha_h }
+{\sum_{h=\alpha +1}^{\beta}\tau_h P(t, T_k) [F_h(t) + \alpha_h]}\right]
+\end{aligned}$$
+
+
+## Defining the Diffusion (4)
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+Finally, we define the $$\frac{\sum_{h=\alpha +1}^{\beta} \tau_h P(t, T_k) \alpha_h }{\sum_{h=\alpha +1}^{\beta}\tau_h P(t, T_k) [F_h(t) + \alpha_h]}$$ term as $\eta_{\alpha, \beta}$.
+
+> - Similarly, we redefine the diffusion as:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= \sum_{k=\alpha+1}^{\beta}\frac{\tau_k P(t, T_k)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)}  \times \sigma_k(t)[F_k(t) - \alpha_k]dZ_k^{\alpha, \beta}(t) \\
+&= \sum_{k=\alpha+1}^{\beta} \frac{\tau_k P(t, T_k)[F_k(t) + \alpha_k]}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)  [F_k(t) + \alpha_k]} \times
+ \sigma_k(t)[S_{\alpha, \beta}(t) + \eta_{\alpha, \beta}]dZ_k^{\alpha, \beta}(t)
+\end{aligned}$$
+
+> - Finally, replacing $$\frac{\tau_k P(t, T_k)[F_k(t) + \alpha_k]}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)  [F_k(t) + \alpha_k]} \times \sigma_k(t)$$ with $\gamma_k(t)$
+
+## Freezing technique
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+We observe that $\frac{\gamma_k(t)}{\sigma_k(t)}$ are **stochastic.** Empirically it has been shown that these weights remain relatively stable. 
+
+Therefore, we can **"freeze"** them holding $t =0$ with minimal impact on the analysis:
+$$\begin{aligned}
+\frac{\gamma_k(t)}{\sigma_k(t)} &= \frac{\tau_k P(t, T_k)[F_k(t) + \alpha_k]}{\sum_{h=\alpha +1}^{\beta} \tau_k P(t, T_h)  [F_k(t) + \alpha_h]} \\
+&\approx \frac{\tau_k P(0, T_k)[F_k(0) + \alpha_k]}{\sum_{h=\alpha +1}^{\beta} \tau_k P(0, T_k)  [F_k(0) + \alpha_k]}
+\end{aligned}$$
+
+Our diffusion, therefore, is:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= \sum_{k=\alpha+1}^{\beta} \gamma_k(t)[S_{\alpha, \beta}(t) + \eta_{\alpha, \beta}]dZ_k^{\alpha, \beta}(t) \\
+&= [S_{\alpha, \beta}(t) + \eta_{\alpha, \beta}]\sum_{k=\alpha+1}^{\beta}  \gamma_k(t) dZ_k^{\alpha, \beta}(t) \\
+\end{aligned}$$
+
+> - It can be shown that for $W^{\alpha, \beta}$ a Brownian motion, $\sum_{k=\alpha+1}^{\beta}  \gamma_k(t) Z_k^{\alpha, \beta}(t)$  can be expressed as: 
+$$\sqrt{\sum_{k,\; j=\alpha+1}^{\beta}  \gamma_k(t) \gamma_k(t) \rho_{j, k}} \; \times W^{\alpha, \beta}$$ 
+
+## Final Diffusion
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+This allows us to express:
+$$\begin{aligned}
+\gamma_{\alpha, \beta} &= \sqrt{\sum_{k,\; j=\alpha+1}^{\beta}  \gamma_k(t) \gamma_k(t) \rho_{j, k}}\\
+Therefore &:\\
+dW^{\alpha, \beta} &= \frac{\sum_{k=\alpha+1}^{\beta}  \gamma_k(t) dZ_k^{\alpha, \beta}(t)}{\gamma_{\alpha, \beta}}
+\end{aligned}$$
+
+> - Our diffusion, therefore can be defined as:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= \gamma ^{\alpha, \beta}(t) [S_{\alpha, \beta}(t) + \eta_{\alpha, \beta}]dW^{\alpha, \beta}
+\end{aligned}$$
+
+> - We define $$X_{\alpha, \beta}(t) = S_{\alpha, \beta}(t) + \eta^{\alpha, \beta}$$
+
+> - Our final diffusion, therefore is:
+$$\begin{aligned}
+dX_{\alpha, \beta}(t) &= \gamma ^{\alpha, \beta}(t) X_{\alpha, \beta}(t)dW^{\alpha, \beta}
+\end{aligned}$$
+
+## {#nextsteps}
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+From Shifted LMM to CEV Shifted LMM
+
+
+## Redefining the diffusion
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+We redefine the diffusion for $F_k(t)$ and attempt to find a new diffusion for $S_{\alpha, \beta}(t)$: 
+$$dF_k(t) = \sigma(t)[F_k(t) - \alpha_k]^\delta dZ_t^k$$
+> - Therefore:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &=  \sum_{k=\alpha +1}^{\beta} \frac{\partial S_{\\alpha, \beta}(t)}{\partial F_k(t)} \times dF_k(t) \\
+&=  \sum_{k=\alpha +1}^{\beta} \frac{\partial S_{\\alpha, \beta}(t)}{\partial F_k(t)} \times \sigma_k(t)[F_k(t) - \alpha_k]^\delta dZ_k^{\alpha, \beta}(t)
+\end{aligned}$$
+
+> - We also redefine our weights $w_k(t)$:
+$$\begin{aligned}
+\gamma_k(t) &= \frac{\tau_k P(t, T_k)[F_k(t) - \alpha_k]^\delta}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)} \times \sigma_k(t) \\
+&= \frac{\tau_k P(t, T_k)[F_k(t) - \alpha_k]^\delta}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)} \times \frac{[S_{\alpha, \beta}(t) - \alpha_k]^\delta}{[S_{\alpha, \beta}(t)- \alpha_k]^\delta} \times \sigma_k(t)
+\end{aligned}$$
+
+## Final diffusion
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+We freeze the weights to obtain the final weights for the diffusion:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= [S_{\alpha, \beta}(t) + \eta_{\alpha, \beta}]^\delta\sum_{k=\alpha+1}^{\beta}  \gamma_k(t) dZ_k^{\alpha, \beta}(t) \\
+where \; &:
+\gamma_k(t) = \frac{\tau_k P(0, T_k)[F_k(0) - \alpha_k]^\delta}{\sum_{k=\alpha +1}^{\beta} \tau_k P(0, T_k)[S_{\alpha, \beta}(0) - \alpha_k]^\delta} \times \sigma_k(t)
+\end{aligned}$$
+
+> - The final result, therefore is the diffusion:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= [S_{\alpha, \beta}(t) + \eta_{\alpha, \beta}]^\delta \times \gamma^{\alpha, \beta}(t) \; dW^{\alpha, \beta}(t)\\
+where \; &: \\
+\gamma_{\alpha, \beta} &= \sqrt{\sum_{k,\; j=\alpha+1}^{\beta}  \gamma_k(t) \gamma_k(t) \rho_{j, k}} \\
+dW^{\alpha, \beta} &= \frac{\sum_{k=\alpha+1}^{\beta}  \gamma_k(t) dZ_k^{\alpha, \beta}(t)}{\gamma_{\alpha, \beta}}
+\end{aligned}$$
+
+## {#nextsteps}
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+Multifactor CEV Shifted LMM
+
+## Multifactor diffusion
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+We redefine our $Z_t^k$ to be **an $n$ - dimensional Brownian motion under the forward measure $Q^k$.**
+
+We can therefore define the shifted CEV process to be:
+$$dF_k(t) = (F_k(t) + \alpha_k)^\delta \times \sigma_k(t) \;. \;dZ_t^{j+1}$$
+
+> - Considering the swap dynamics, we know that $S_{\alpha, \beta}(t) = \sum_{k=\alpha+1}^{\beta} w_k(t) F_k(t)$.
+
+> - We can define our SDE as:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &=  \sum_{k=\alpha +1}^{\beta} \frac{\partial S_{\alpha, \beta}(t)}{\partial F_k(t)} \times dF_k(t) \\
+&=  \sum_{k=\alpha +1}^{\beta} \frac{\partial S_{\alpha, \beta}(t)}{\partial F_k(t)} [F_k(t) + \alpha_k]^\delta \times \sigma_k(t) \; . \; dZ_k^{\alpha, \beta}(t)
+\end{aligned}$$
+
+> - The differential $\frac{\partial S_{\alpha, \beta}(t)}{\partial F_k(t)}$ can be shown to be (Andersen & Andreasen 2000):
+$$\begin{aligned}
+\frac{\partial S_{\alpha, \beta}(t)}{\partial F_k(t)} = \frac{\tau_k P(t, T_k)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)} \; + \; 
+\frac{\tau_k}{1 + \tau_k F_k(t)}\sum_{k=\alpha +1}^{\beta}\frac{\tau_k P(t, T_k)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)}(F_k(t) - S_{\alpha, \beta}(t))
+\end{aligned}$$
+
+## Freezing technique
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+We replace the following expression in the lognormal framework:
+$$\begin{aligned}
+(S_{\alpha, \beta}(t) + \eta^{\alpha, \beta})^\delta w_j(t) &= \frac{\partial S_{\alpha, \beta}(t)}{\partial F_k(t)} \frac{(F_k(t) + \alpha_k)^\delta}{(S_{\alpha, \beta}(t) + \eta^{\alpha, \beta})^\delta}\\
+&= \frac{\partial S_{\alpha, \beta}(0)}{\partial F_k(0)} \frac{(F_k(0) + \alpha_k)^\delta}{(S_{\alpha, \beta}(0) + \eta^{\alpha, \beta})^\delta} = w_j(0)(S_{\alpha, \beta}(t) + \eta^{\alpha, \beta})^\delta
+\end{aligned}$$
+
+> - The resulting diffusion, therefore is:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= (S_{\alpha, \beta}(t) + \eta^{\alpha, \beta})^\delta \; \sum_{k=\alpha +1}^{\beta} w_k(0) \sigma_k(t) \; . \; dZ_t^{\alpha, \beta}\\
+&= (S_{\alpha, \beta}(t) + \eta^{\alpha, \beta})^\delta \; \sum_{q=1}^{n} \left(\sum_{k=\alpha +1}^{\beta} w_k(0) \sigma_k^q(t) \right)\; \times \; dZ_q^{\alpha, \beta}(t)
+\end{aligned}$$
+
+> - for $Z^{\alpha, \beta}$ **a n-dimensional Brownian motion under measure $Q^{\alpha, \beta}$**
+
+## {#nextsteps}
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`"> 
+Approximation of swap volatility dynamics (Step 2 - Addactis)
+
+## Preliminaries
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`"> 
+We overlook the correlation effects of the brownian motion and simplify the SDE in the following manner:
+$$\begin{aligned}
+\sum_{q=1}^{q} \left(\sum_{k=\alpha +1}^{\beta} w_k(0) \sigma_k^q(t) \right)\; \times \; dZ_q^{\alpha, \beta}(t) = \sigma_{\alpha, \beta}(t)dW^{\alpha, \beta}(t)
+\end{aligned}$$
+
+Representing:
+
+1. $w$ as the M-dimensional vector of weights $w_k(0)$ for M the number of time intervals between $T_\alpha$ and $T_\beta$;  
+2. $\sigma(t)$ as a $M\times n$ matrix function;
+3. $Z(t)$ as the n-dimensional Brownian Motion;
+4. $W(t)$, the unidimensional Brownian Motion.
+
+> - we denote $\sigma_{\alpha, \beta}(t)$ as:
+$$\begin{aligned}
+w \sigma(t)Z(t) &= \sigma_{\alpha, \beta}(t)W(t) \\
+where&: \\
+\sigma_{\alpha, \beta}(t) &= \vert \vert w\sigma(t) \vert \vert_n \\
+W(t) &= \frac{w\sigma(t)}{\vert \vert w\sigma(t) \vert \vert_n} Z(t)
+\end{aligned}$$
+
+## Volatility dynamics
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+The swaption problem becomes a Black compatible, were:
+$$\begin{aligned}
+\boldsymbol {PS^{LSM}}(t, T_\alpha,T_\beta,\theta,N,K) &= \boldsymbol {PS^{Black}}(t, T_\alpha,T_\beta,\theta,N,K)\\
+&= C_{\alpha, \beta}(0)Bl(K, S_{\alpha, \beta}(t), v_{\alpha, \beta}(T_\alpha))\\
+where: \\
+Bl(K, S_{\alpha, \beta}(t), v_{\alpha, \beta}(T_\alpha)) &= S_{\alpha, \beta}(t) \Phi(d_1(K, F_k(0),v_k)) - K\Phi(d_2(K, F_k(0),v_{\alpha, \beta}(T_\alpha)))]\\
+d_1(K, F_k(0),v_k) &= \frac{ln(S_{\alpha, \beta}(t))/K) + v_{\alpha, \beta}(T_\alpha)^2/2}{v_{\alpha, \beta}(T_\alpha)}\\
+d_2(K, F_k(0),v_{\alpha, \beta}(T_\alpha)) &= d_1 - v_{\alpha, \beta}(T_\alpha)\\
+and:\\
+v_{\alpha, \beta}(T_\alpha)^2 &= \int_0^{T_{\alpha}}\sigma_{\alpha, \beta}(s)^2 ds\\
+&=\int_0^{T_{\alpha}} \vert \vert w\sigma(s) \vert \vert_n^2ds
+\end{aligned}$$
+
+
+
+## Black Pricing - Classical LMM (No Drift or Power Function)
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+In the classical LMM SDE, we would have all the elements required to provide a Black price.
+
+> - Our **standard LMM SDE** would be defined as:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= S_{\alpha, \beta}(t) \sigma_{\alpha, \beta}dW^{\alpha, \beta}(t)
+\end{aligned}$$
+
+> - The price of a payer swaption under this model, therefore would be:
+$$\begin{aligned}
+\boldsymbol {PS^{Black}}(t, \alpha,\beta,\tau, N,R) &= N \times \tau \times \left [\sum_{i=\alpha + 1}^{\beta} D(t, T_{i}) \right]  \boldsymbol{\mathbb{E}^{Q^{\alpha, \beta}}} [S_{\alpha, \beta}(T_\alpha) - R)^{+}]\\
+&= N \times \tau \times \left [\sum_{i=0}^{n} D(t, T_{i}) \right] \left(S_{\alpha, \beta}(t)\mathcal{N}(d_1) -  R\mathcal{N}(d_2) \right) \\
+where&: \\
+d_1 &= \frac{log(\frac{S_{\alpha, \beta}(t)}{R}) + \frac{\sigma_{\alpha, \beta}^2(T_\alpha - t)}{2}}{\sigma_{\alpha, \beta}\sqrt{T_\alpha - t}} \\
+\sigma_{\alpha, \beta} &= \sqrt{\frac{1}{T_\alpha - t}\sum_{i=0}^{\alpha} (T_{i+1} - T_i)\sum_{q=1}^{n} 
+\sum_{k=\alpha +1}^{\beta}\frac{\; (F_k(0) + \alpha_k)^{2\delta}}{(S_{\alpha, \beta}(0) + \eta^{\alpha, \beta})^{2\delta}}
+\;w_k^2(0) \sigma_k^q(s)}
+\end{aligned}$$
+
+## {#nextsteps}
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`"> 
+Hagan Woodward Volatility Approximation (Step 3 - Addactis)
+
+## General Hagan Approximation
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+As noted previously, in the standard LMM, we could easily plug in all the inputs to obtain approximations of prices and volatility dynamics.
+
+Because our model is a **shifted CEV**, we utilise the **Hagan Woodward volatility approximation**.
+
+> - Our shifted CEV diffusion is:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= (S_{\alpha, \beta}(t) + \eta)^\delta \sigma_{\alpha, \beta}dW^{\alpha, \beta}(t)
+\end{aligned}$$
+
+> - On the other hand, the general Hagan approximation for the **equivalent Black volatility** is:
+$$\begin{aligned}
+\sigma_B &= â\frac{A(f_{av})}{f_{av}} \left[ 1 + (\gamma_2 - 2\gamma_1^2 + \frac{2}{f^2_{av}}) \frac{(f -K)^2}{24} + 
+(2\gamma_2 - \gamma_1^2 + \frac{1}{f^2_{av}})\frac{â^2A^2(f_{av})(T_0 - t)}{24} + ...\right] \\
+\end{aligned}$$
+
+> - For any diffusion:
+$$dF = \sigma A(F) dW $$
+> - where $A(F)$ is an Arrow Debreu security and $f_{av} = \frac{f + K}{2}$ for $F(t, T) = f$ and $K$ the strike.
+
+## CEV Approximation & Pricing
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+Define $A(F) = S_{\alpha, \beta}^\delta$
+
+We obtain an equivalent Black approximation:
+$$\begin{aligned}
+\sigma_{Black}= \frac{\sigma_{\alpha, \beta}}{f_{av}^{(1 - \delta)}} \left[ 1 + \frac{(1 - \delta)(2 + \delta)}{24} \left( \frac{S_{\alpha, \beta} - K}{f_{av}}\right)^2 + \frac{(1 - \delta)^2}{24} \; 
+\frac{\sigma_{\alpha, \beta}^2(T_{\alpha} - t)}{f_{av}^{2 - 2\delta}} + ...
+\right]
+\end{aligned}$$
+
+> - And can therefore plug this back to the Black Pricer where:
+$$\begin{aligned}
+\boldsymbol {PS^{Black}}(t, \alpha,\beta,\tau, N,R) &= N \times \tau \times \left [\sum_{i=0}^{n} D(t, T_{i}) \right] \left[(S_{\alpha, \beta}(t) +\delta)\mathcal{N}(d_1) -  (R+\delta)\mathcal{N}(d_2) \right] \\
+\end{aligned}$$

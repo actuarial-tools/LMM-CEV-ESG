@@ -1,0 +1,302 @@
+---
+output: 
+  slidy_presentation: 
+    css: style.css
+    logo: logo.png
+    footer: "Actuarial Function - Aviva France"
+header-includes: \usepackage{amsmath,amssymb, amsfonts, bbm, dsfont, xcolor}
+---
+
+```{r, echo=FALSE}
+logo<-"logo.png"
+```
+
+## {#nextsteps}
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+Displaced Diffusion CEV LFM 
+
+## {#normalPage}
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+Projection of Fundamental Instruments
+
+## Forward Rate Diffusion under spot Libor Measure
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+We define the forward rate at $t$ between $[T_{k-1}, T_{k})$ for a set of dates $T_\alpha, ..., T_\beta$ as $F_k(t)$ where:
+
+$$F_k(t) = \frac{P(t, T_{k-1}) - P(t, T_k)}{\tau_k P(t, T_k)}$$
+$P(t, T_k)$ is the price of a zero coupon bond maturing at $T_k$ and $\tau_k$ is the time difference between $T_{k-1}$ and $T_k$.
+
+We define the  diffusion of the forward rate $F_k(t)$ under the spot Libor measure $Q^d$ to be:
+$$\begin{aligned}
+dF_k(t) &= (F_k(t) + \delta)^\eta \mu_k^d(t) dt + (F_k(t) +\delta)^\eta (\sigma^k_1(t)dZ_1^d(t) +\sigma^k_2(t)dZ_2^d(t))  \\
+where&:\\
+\mu_k^d(t) &= \left[ \sum_{j = \beta(t)}^k 
+ \tau_j \frac{ [\sigma^j_1(t)\sigma^k_1(t) + \sigma^j_2(t)\sigma^k_2(t)]}
+{1 + \tau_j F_j(t)} \right] \\
+\beta(t) &= min\{i: t< T_i\}
+\end{aligned}$$
+
+where $Z^d$ is a 2-dimensional Brownian motion.
+
+We also note that the component Brownian motions are independent i.e.
+$$d\langle Z_1, Z_2 \rangle (t) = 0$$
+
+## Projection of Zero Coupons & Discount Factor
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+
+### Zero Coupons
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+
+The forward rate $F_k(t)$ is defined as:
+$$F_k(t) = \frac{P(t, T_{k-1}) - P(t, T_k)}{\tau_k P(t, T_k)}$$
+
+Therefore:
+$$P(t, T_{k}) = P(t, T_{k-1}) \times \frac{ 1}{1 + \tau_k F_k(t)}$$
+We can use this recursive definition to find the zero coupon price at $T_{k+1}$:
+$$P(t, T_{k+1}) = P(t, T_{k}) \times \frac{ 1}{1 + \tau_{k+1} F_{k+1}(t)}$$
+
+### Discount Factor
+We recursively define:
+$$D_{T_{k+1}} = D_{T_k} \times P(T_k, T_{k+1})$$
+
+## {#nextsteps}
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+Forward Swap Diffusion
+
+## Swap Dynamics
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+
+The value of the fixed rate $K$ of a swap is:
+$$K = \frac{1 - P(t, T_{\beta})}{\sum_{k=\alpha + 1}^{\beta}\theta_k  \times P(t, T_{k})}$$
+
+The forward swap $S_{\alpha, \beta}$ initializing at $T_{\alpha} \neq 0$ and maturing at $T_{\beta}$ is:
+$$\begin{aligned}
+S_{\alpha, \beta}(t) &=\frac{P(t, T_{\alpha}) - P(t, T_{\beta})}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)}
+\end{aligned}$$
+
+Which we can simplify to:
+$$\begin{aligned}
+S_{\alpha, \beta}(t) &= \sum_{k=\alpha+1}^{\beta} w_k(t)F_k(t) \\
+where&:
+w_k(t) = \frac{\tau_k P(t, T_k)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)}
+\end{aligned}$$
+
+## Itö Lemma
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+
+We apply Ito's lemma and the DD CEV LFM framework to define a diffusion for the forward swap:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= \sum_{k = \alpha + 1}^{\beta}w_k(t)dF_k(t) + F_k(t)dw_k(t) + (...) dt \\
+&= \sum_{j,k = \alpha + 1}^{\beta}\left ( w_j(t)\delta_{j,k}(t) + F_k(t)\frac{\partial w_k(t)}{\partial F_j} \right) dF_j(t) + (...) dt 
+\end{aligned}$$
+
+We can simplify our notation in the following manner:
+$$\begin{aligned}
+ \bar{w}(t) = \left( w_j(t)\delta_{j,k}(t) + F_k(t)\frac{\partial w_k(t)}{\partial F_j} \right)
+\end{aligned}$$
+
+Resulting in:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= \sum_{k = \alpha + 1}^{\beta} \bar{w_k}(t)dF_k(t) + (...) dt 
+\end{aligned}$$
+
+## Freezing Technique
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+
+We use the result from the previous page:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= \sum_{k = \alpha + 1}^{\beta} \bar{w_k}(t)dF_k(t) + (...) dt 
+\end{aligned}$$
+
+<span style="color:#C01B83"> **NOTE:** While the **spot LIBOR measure** will be used in simulation, we will obtain our pricing formulas  **under the forward swap measure**</span>.
+
+Under <span style="color:#C01B83"> the forward swap measure, $S_{\alpha, \beta}(t)$ is a martingale.</span> This results in:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= \sum_{j = \alpha + 1}^{\beta}
+\bar{w_k}(t) \times 
+\left[(F_k(t) + \delta)^\eta \; (\sigma_k^1dZ_1^{\alpha, \beta}(t) + \sigma_k^2dZ_2^{\alpha, \beta}(t)\right] \\
+&= \sum_{j = \alpha + 1}^{\beta}
+\bar{w_k}(t) \times \frac{(F_k(t) + \delta)^\eta}{(S_{\alpha, \beta}(t) + \delta)^\eta}
+\left[(S_{\alpha, \beta}(t) + \delta)^\eta \; (\sigma_k^1dZ_1^{\alpha, \beta}(t) + \sigma_k^2dZ_2^{\alpha, \beta}(t)\right] \\
+&= \sum_{j = \alpha + 1}^{\beta}
+\gamma_k(t) \times 
+\left[(S_{\alpha, \beta}(t) + \delta)^\eta \; (\sigma_k^1dZ_1^{\alpha, \beta}(t) + \sigma_k^2dZ_2^{\alpha, \beta}(t)\right] \\
+\end{aligned}$$
+
+where $\left\{\gamma_k(t)\right \}_{t \in [0, T_\alpha]}$ is a process defined by: $\frac{\bar{w}_k(t) (F_k(t)+\delta)^\eta}{(S_{\alpha,\beta}(t)+\delta)^\eta}$
+
+## Freezing Technique
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+
+The <span style="color:#C01B83">**freezing technique** entails setting $\gamma_k(t)$ to $\gamma_k(0)$.</span> These weights are therefore frozen in time. 
+
+Our final diffusion is, therefore <span style="color:#C01B83">**an approximation of the diffusion under the CEV LSM framework** </span> allowing us to price both caps and swaptions. 
+
+The definitive approximation of the forward swap rate diffusion, therefore is:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) \approx  \sum_{k=\alpha +1}^{\beta} \gamma_k(0) \; (S_{\alpha, \beta}(t) + \delta)^\eta \;  [\sigma^k_1(t)dZ^{\alpha, \beta}_1(t) + \sigma^k_2(t)dZ^{\alpha, \beta}_2 (t)] \\
+\end{aligned}$$
+
+## {#nextsteps}
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+Swaptions Pricing (Chi-Square)
+
+
+## Random Time Change 
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+
+We recall the final diffusion approximation:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) \approx  \sum_{k=\alpha +1}^{\beta} \gamma_k(0) \; (S_{\alpha, \beta}(t) + \delta)^\eta \;  [\sigma^k_1(t)dZ^{\alpha, \beta}_1(t) + \sigma^k_2(t)dZ^{\alpha, \beta}_2 (t)] \\
+\end{aligned}$$
+
+ We define a deterministic time change $\sigma_{\alpha, \beta}(t)$:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}(t) = \int_0^{t}\left \Vert \sum_{j = \alpha + 1}^{\beta}  \gamma_k(0) \; \sigma_k(u) \right \Vert ^2 du
+\end{aligned}$$
+
+Applying this deterministic time change to our diffusion, we obtain:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) = (S_{\alpha, \beta}(t) + \delta)^\eta \times dW^{\alpha, \beta}(\sigma_{\alpha, \beta}(t))
+\end{aligned}$$
+
+where $W^{\alpha, \beta}(\sigma_{\alpha, \beta}(t))$ is a one-dimensional Brownian motion. 
+
+## Analytical Formula 
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+
+We can perform a change of variables and define the variable $X$ such that:
+$$\begin{aligned}
+X = \frac{(S_{\alpha, \beta}(t) + \delta)^{2(1 -\eta)}}{(1 - \eta)^2} 
+\end{aligned}$$
+
+Applying Ito's lemma, we can define $X$ as a square root process:
+$$\begin{aligned}
+dX(t) &= \phi dt + 2 \sqrt{X} dW(\sigma_{\alpha, \beta}^2(t))\\
+where&: \\
+\phi &= \frac{1 - 2\eta}{1 - \eta}
+\end {aligned}$$
+
+This equation is a squared Bessel process $BESQ^\phi$ process with $\phi$ degress of freedom whose corresponding Fokker-Planck equation is:
+$$\begin{aligned}
+\frac{\partial p }{\partial t} &= \frac{\partial^2 }{\partial X^2}(aXp) - \frac{\partial}{\partial X}((bX +c) p) \;\;\; 
+\left\{0 < X < \infty \; ; \; 0 < t < T\right\} \\
+Initial Condition:&\\
+p(X, 0) &= \delta_D(X - X_0)
+\end {aligned}$$
+
+where $\delta_D(x)$ is the Dirac delta function.
+
+
+Clearly, setting $a = 2$, $b= \delta$ and $c=0$ yields our BESQ equation. 
+
+## Solution
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+The pricing formula for our swaption is defined:
+$$\begin{aligned}
+\boldsymbol {PS}(t, T_\alpha,T_\beta,\theta,N,K) &= N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} P(t, T_{i}) \right]  \boldsymbol{\mathbb{E}^{Q^{\alpha, \beta}}} [(S_{\alpha, \beta}(T) - K)^{+}| \mathcal{F_t}] \\
+&= N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} P(t, T_{i}) \right]  \boldsymbol{\mathbb{E}^{Q^{\alpha, \beta}}} [((S_{\alpha, \beta}(T)+\delta) - (K+\delta))^{+}|\mathcal{F_t}]\\
+&= N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} P(t, T_{i}) \right] \int_{\tilde{K}}^\infty \left[\frac{X^{-\upsilon}}{(1 - \eta)^{2\upsilon}} - (K+\delta) \right] p(X, \sigma_{\alpha, \beta}^2(T_\alpha); X_0)dX\\
+where&:\\
+\tilde{K} = \frac{(K+\delta)^{2(1 - \alpha)}}{(1 - \eta)^2} &\;\;\;\;\;\;
+\int_{\tilde{K}}^\infty p(X, \sigma_{\alpha, \beta}^2(T_\alpha); X_0)dX = \chi^2 \left(\frac{X_0}{\sigma_{\alpha, \beta}^2(T_\alpha)}; 2 - \Delta, \frac{\tilde{K}}{\sigma_{\alpha, \beta}^2(T_\alpha)} \right)\;\;\;\;\;\; \upsilon = \frac{1}{2(1 - \eta)} = \frac{\Delta}{2}-1
+\end{aligned}$$
+
+Using this interpretation, and the solution to the Fokker-Planck equation, we obtain:
+$$\begin{aligned}
+\boldsymbol {PS}&= A_{\alpha, \beta}(t) \left[ (S_{\alpha, \beta}(t) + \delta) \left [1 - \chi^2 \left(\frac{\tilde{K}}{\sigma_{\alpha, \beta}^2(T)}; 4 - \Delta, \frac{X_0}{\sigma_{\alpha, \beta}^2(T)}\right) \right] - 
+(K +\delta)  \chi^2 \left(\frac{X_0}{\sigma_{\alpha, \beta}^2(T)}; 2 - \Delta, \frac{\tilde{K}}{\sigma_{\alpha, \beta}^2(T)}\right)  \right]\\
+where&: \;\; A_{\alpha, \beta}(t) = N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} P(t, T_{i}) \right]
+\end{aligned}$$
+
+## {#nextsteps}
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+Volatility Approximation
+
+## Volatility Approximation
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+We begin with a definition by Andersen and Andreasen (1997) of volatility term as:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2(t) = \int_t^{T_\alpha}   \left \Vert\  \sum_{j =\alpha + 1}^\beta \gamma_j(0)\sigma_j(u)  \right \Vert  ^2du
+\end{aligned}$$
+
+for $\gamma_j(0)$ are the _"frozen"_ scalar weights and $\sigma_j(t)$ the volatility vector functions.
+
+We expand this expression to obtain:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2(t) &= \int_t^{T_\alpha} \sum_{q = 1}^{d} \sum_{i, j = \alpha + 1}^{\beta} \gamma_i(0) \gamma_j(0) \sigma_i^q(u)\sigma_j^q(u) du
+\end{aligned}$$
+
+The full expansion is:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2(t) &=  \sum_{q = 1}^{d} \sum_{i, j = \alpha + 1}^{\beta} \frac{\omega_i(0) \omega_j(0)(F_i(0) + \delta)^\eta (F_j(0) + \delta)^\eta }{(S_{\alpha, \beta}(0) + \delta)^{2 \eta}} \int_t^{T_\alpha} \sigma_i^q(u)\sigma_j^q(u)du \\
+where&:
+\omega_i(0) = \frac{\partial w_i}{\partial F_i}(0)
+\end{aligned}$$
+
+## {#nextsteps}
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+Calibration
+
+
+## Objective Function
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+We note the large number of parameters required in the calibration i.e. (all $\sigma_k$ and their corresponding correlations.)
+
+We can greatly reduce the number of parameters by introducing a parametrization of the volatility surface.
+
+We introduce a sequence $\{\Lambda_i^q \}_{i \geq 1; q \in \{1, 2\}}$ where:
+$$\sigma_k^q(t) = \Lambda_{k-\beta(t)+1}^q$$
+In this case, we have 2 brownian motions allowing us to express the $\Lambda$ terms:
+$$\Lambda_k^1 = \sqrt{1 - \rho^2}\times \sigma_1 e^{-\alpha_1 k \tau}; \;\;
+\Lambda_k^2 = \sigma_2 e^{-\alpha_2 k \tau} + \rho\sigma_1 e^{-\alpha_1 k \tau}$$
+
+From the above parametrization, we can define the set of our parameters $\Psi = (\eta, \sigma_1, \sigma_2, \rho, \alpha_1, \alpha_2)$, and our optimization problem:
+$$\Phi = argmin \left(\sum_{\alpha, \beta} g(\boldsymbol{PS^{Mkt}}(t,N, K, \alpha, \beta), \boldsymbol{PS^{DD\; CEV}}(t, N, K, \alpha, \beta, \Psi)) \right)$$
+
+## {#nextsteps}
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+Projection
+
+## Forward Diffusion Discretization Schemes
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+We consider different discretization schemes where $\Delta_i = t_i - t_{i-1}$ and $\varepsilon_i^q$ is a standard Gaussian:
+
+<span style="color:#C01B83"> 1. **Log Euler** : </span>
+$$\begin{aligned}
+\hat{F_k}(t_{i+1}) = \hat{F_k}(t_{i}) \exp\left \{ \frac{(\hat{F_k}(t_{i})+ \delta)^\eta}{\hat{F_k}(t_{i})}   \times 
+\left(\sigma_k^1(t_{i}) \; \left [ \left(\hat{\mu_k^1(t_{i})} - 0.5 \times \frac{(\hat{F_k}(t_{i})+ \delta)^\eta}{\hat{F_k}(t_{i})} \sigma_k^1(t_{i})\right) \Delta_i + 
+\varepsilon_i^1 \sqrt{ \Delta_i} \right]  + \\
+\sigma_k^2(t_{i}) \; \left [\left(\hat{\mu_k^2(t_{i})} - 0.5 \times \frac{(\hat{F_k}(t_{i})+ \delta)^\eta}{\hat{F_k}(t_{i})} \sigma_k^1(t_{i})\right) \Delta_i + 
+\varepsilon_i^2 \sqrt{ \Delta_i} \right] \right) \right \}
+\end{aligned}$$
+
+
+<span style="color:#C01B83"> 2. **Higham Mao** : </span> Modification of the Euler Scheme
+$$\begin{aligned}
+\hat{F_k}(t_{i+1}) = \hat{F_k}(t_{i}) + (\vert\hat{F_k}(t_{i})\vert + \delta)^\eta  \times 
+\left(\sigma_k^1(t_{i}) \; \left [\hat{\mu_k^1(t_{i})} \Delta_i + \varepsilon_i^1 \sqrt{ \Delta_i} \right]  + 
+\sigma_k^2(t_{i}) \; \left [\hat{\mu_k^2(t_{i})} \Delta_i + \varepsilon_i^2 \sqrt{ \Delta_i} \right] \right)
+\end{aligned}$$
+
+<span style="color:#C01B83"> 3. **Partial Truncation** : </span> Modification of the Euler Scheme
+$$\begin{aligned}
+\hat{F_k}(t_{i+1}) = \hat{F_k}(t_{i}) + ([\hat{F_k}(t_{i})]^+ + \delta)^\eta  \times 
+\left(\sigma_k^1(t_{i}) \; \left [\hat{\mu_k^1(t_{i})} \Delta_i + \varepsilon_i^1 \sqrt{ \Delta_i} \right]  + 
+\sigma_k^2(t_{i}) \; \left [\hat{\mu_k^2(t_{i})} \Delta_i + \varepsilon_i^2 \sqrt{ \Delta_i} \right] \right)
+\end{aligned}$$
+
+<span style="color:#C01B83"> 4. **Absorption** : </span> Modification of the Euler Scheme
+$$\begin{aligned}
+\hat{F_k}(t_{i+1}) = \left[\hat{F_k}(t_{i}) + (\hat{F_k}(t_{i}) + \delta)^\eta  \times 
+\left(\sigma_k^1(t_{i}) \; \left [\hat{\mu_k^1(t_{i})} \Delta_i + \varepsilon_i^1 \sqrt{ \Delta_i} \right]  + 
+\sigma_k^2(t_{i}) \; \left [\hat{\mu_k^2(t_{i})} \Delta_i + \varepsilon_i^2 \sqrt{ \Delta_i} \right] \right) \right]^+
+\end{aligned}$$
+
+
+## Caplet Pricing Example
+<IMG style="position:absolute;top:2.5%;right:5%;width:150px;"SRC="`r logo`">
+
+We compare Monte Carlo prices using the different schemes and the closed form prices.
+
+Results in Python Page

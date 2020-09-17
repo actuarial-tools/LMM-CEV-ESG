@@ -1,0 +1,27 @@
+---
+title: "Untitled"
+author: "Caleb Migosi"
+date: "12/03/2020"
+output: powerpoint_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## R Markdown
+
+We define the forward rate at $t$ between $[T_{k-1}, T_{k})$ for a set of dates $T_\alpha, ..., T_\beta$ as $F_k(t)$ where:
+
+$$F_k(t) = \frac{P(t, T_{k-1}) - P(t, T_k)}{\tau_k P(t, T_k)}$$
+$P(t, T_k)$ is the price of a zero coupon bond maturing at $T_k$ and $\tau_k$ is the time difference between $T_{k-1}$ and $T_k$.
+
+We define the  diffusion of the forward rate $F_k(t)$ under the spot Libor measure $Q^d$ to be:
+$$\begin{aligned}
+dF_k(t) &= (F_k(t) + \delta)^\eta \mu_k^d(t) dt + (F_k(t) +\delta)^\eta (\sigma^k_1(t)dZ_1^d(t) +\sigma^k_2(t)dZ_2^d(t))  \\
+where&:\\
+\mu_k^d(t) &= \left[ \sum_{j = \beta(t)}^k 
+ \tau_j \frac{ [\sigma^j_1(t)\sigma^k_1(t) + \sigma^j_2(t)\sigma^k_2(t)]}
+{1 + \tau_j F_j(t)} \right] \\
+\beta(t) &= min\{i: t< T_i\}
+\end{aligned}$$

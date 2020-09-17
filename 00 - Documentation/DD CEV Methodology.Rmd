@@ -1,0 +1,437 @@
+---
+title: 'Methodology Note: DD CEV LMM'
+author: "Actuarial Function"
+date: "14/02/2020"
+output:
+  word_document:
+    reference_docx: temp.docx
+    toc: yes
+    toc_depth: 3
+header-includes: \usepackage{amsmath,amssymb, amsfonts, bbm, dsfont}
+---
+
+# Executive Summary
+
+Adverse interest rate movements are a major risk concern to Aviva France's portfolio. It is of particular importance to properly model and manage these risks. Model selection and calibration are therefore key to any interest rate risk management endeavour.
+
+The anchor model for this paper is an extension of the _Libor Market Model (LMM)._ This is because the LMM can be calibrated on discretely discounted rates directly observable in the market.
+
+The standard LMM, however, does not properly capture the volatility dynamics of complex financial instruments. It is for this reason that an extension of the model is used.
+
+We expound on both the LMM and its extension, the Displaced Diffusion Constant Elasticity of Variance LMM (DD CEV LMM) and establish pricing and calibration parameters.
+
+This will be done in the following key sections:
+
+1. **Projection:** We define the forward diffusion under the spot Libor Measure.
+
+  + We also proceed to define an interator allowing us to project zero coupon bonds. 
+  + Finally, the section expounds on modelling the deflator.
+
+2. **Swaption Pricing:** We provide the forward swap diffusion and the Chi-square closed form pricer.
+
+3. **Calibration: ** We expound on the Levenberg Marquardt algorithm that will serve as the optimization function.
+
+# Projection
+
+The Displaced Diffusion CEV LFM (DD CEV LFM) is a stochastic model that models the forward/ forward swap rate as a sum of 2 non correlated DD CEV models.
+
+The key particularity of this model is the conditional volatility structure. We know anecdotally that implied volatility tends to move in the opposite direction to rates. This model allows us to replicate this relationship.
+
+The DD CEV LFM also allows for the modelling of the forward swap rate under a forward rate framework using an industry standard approximation called the freezing technique and pricing of swaptions using a closed form formula. This allows us to price caps, floors and swaptions under a single model.
+
+## Forward Diffusion under Spot LIBOR Measure
+Two of the most common market models are the **Lognormal Forward Model(LFM)** and the **Lognormal Forward-Swap model.** The LFM has as its primary assumption that the forward rates are lognormally distributed. The LSM has as its primary assumption that swap rates are lognormally distributed.
+
+We define the forward rate at $t$ between $[T_{k-1}, T_{k})$ as $F_k(t)$ for a set of dates $T_\alpha, ..., T_\beta$ as:
+
+$$F_k(t) = \frac{P(t, T_{k-1}) - P(t, T_k)}{\tau_k P(t, T_k)}$$
+where $P(t, T_k)$ is the price of a zero coupon bond maturing at $T_k$ and $\tau_k$ is the time difference between $T_{k-1}$ and $T_k$.
+
+We define the diffusion of the forward rate $F_k(t)$ under the spot Libor measure $Q^d$ to be:
+$$\begin{align}
+dF_k(t) &= (F_k(t)+\delta)^\eta \mu_k^d(t) dt + (F_k(t)+\delta)^\eta (\sigma^k_1(t)dZ_1^d(t) +\sigma^k_2(t)dZ_2^d(t))  \\
+where&:\\
+\mu_k^d(t) &= \left[ \sum_{j = \beta(t)}^k 
+ \tau_j \frac{ [\sigma^j_1(t)\sigma^k_1(t) \; + \sigma^j_1(t)\sigma^k_2(t) + \sigma^j_2(t)\sigma^k_1(t) + \sigma^j_2(t)\sigma^k_2(t)]}
+{1 + \tau_j F_j(t)} \right] \\
+\beta(t) &= min\{i: t< T_i\}
+\end{align}$$
+
+where $Z^d$ is a 2-dimensional Brownian motion.
+
+We also note that the component Brownian motions are independent i.e.
+$$d\langle Z_1, dZ_2 \rangle (t) = 0$$
+
+## Projection of Zero Coupons
+We recall the definition of the forward rate and use a recurrence relation to find the value of our zero coupons.
+
+The forward rate $F_k(t)$ is defined as:
+$$F_k(t) = \frac{P(t, T_{k-1}) - P(t, T_k)}{\tau_k P(t, T_k)}$$
+
+Therefore:
+$$P(t, T_{k}) = P(t, T_{k-1}) \times \frac{ 1}{1 + \tau_k F_k(t)}$$
+
+We can use this recursive definition to find the zero coupon price at $T_{k+1}$:
+$$P(t, T_{k+1}) = P(t, T_{k}) \times \frac{ 1}{1 + \tau_{k+1} F_{k+1}(t)}$$
+
+## Projection of the Deflator
+In the context of the LMM, it is important to note that the deflator should be modeled as the product of zero coupon bonds.
+
+This implies defining the deflator at time 0 as 1 i.e. $D_0 = 1$.
+
+We then recursively define:
+$$D_{T_{k+1}} = D_{T_k} \times P(T_k, T_{k+1})$$
+
+# Swaption Pricing
+
+In this section, we obtain the forward swap rate diffusion under the LFM framework. This methodology is derived from the standard LFM.
+
+We use the already documented CEV LFM methodology to obtain a similar framework for the DD CEV LFM.
+
+## Forward Swap Diffusion
+In this section, we use the LFM model (defined in [Forward Diffusion under Spot LIBOR Measure]) to obtain the forward swap rate diffusion.
+
+We divide this section into the following parts:
+
+1. **Swap Dynamics:** We decompose swap rates as a combination of forward rates;
+2. **Forward Swap Diffusion:** We define, under the decomposition in (1), a diffusion for the forward swap rate;
+3. **Freezing Technique:** We apply the freezing technique to obtain an approximation of the diffusion.
+
+### Swap Dynamics
+We begin with the valuation of an interest rate swap with a fixed rate $K$, notional $N$ maturing at $T_\beta$ with $\theta_k$ representing the time difference between $T_{k+1}$ and $T_k$. At initiation, the value of the floating leg is the par value and the value of the swap is 0. This implies that:
+$$N = N \times \left [\sum_{k=\alpha + 1}^{\beta}\theta_k \times K \times P(t, T_{k})  + P(t, T_{\beta}) \right]$$
+We can show that the value of $K$ is:
+$$K = \frac{1 - P(t, T_{\beta})}{\sum_{k=\alpha + 1}^{\beta}\theta_k  \times P(t, T_{k})}$$
+
+Under this definition, we can demonstrate that the forward swap $S_{\alpha, \beta}$initializing at $T_{\alpha} \neq 0$ and maturing at $T_{\beta}$ is:
+$$\begin{aligned}
+S_{\alpha, \beta}(t) &=\frac{P(t, T_{\alpha}) - P(t, T_{\beta})}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)}
+\end{aligned}$$
+
+We observe, however, that we can expand the numerator such that:
+$$\begin{aligned}
+S_{\alpha, \beta}(t)&=\frac{\sum_{k=\alpha+1}^{\beta} P(t, T_{k-1}) - P(t, T_k)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)}\\
+\end{aligned}$$
+
+We multiply the numerator and denominator by $\tau_k P(t, T_k)$ and recall the definition of the forward $F_k(t)$ to obtain:
+$$\begin{aligned}
+S_{\alpha, \beta}(t) &= \sum_{k=\alpha+1}^{\beta} \frac{\tau_k P(t, T_k)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)} \times F_k(t)
+\end{aligned}$$
+
+Which we can simplify to:
+$$\begin{aligned}
+S_{\alpha, \beta}(t) &= \sum_{k=\alpha+1}^{\beta} w_k(t)F_k(t) \\
+where&:
+w_k(t) = \frac{\tau_k P(t, T_k)}{\sum_{k=\alpha +1}^{\beta} \tau_k P(t, T_k)}
+\end{aligned}$$
+
+## Forward Swap Diffusion
+
+### Preliminary Note
+Before going further, we note that this section is an application of the _Extended Market Model_ framework by Andersen & Andreasen (1998) for volatility functions defined as:
+$$\lambda_k(t) = \psi(F_k(t)) \times \sigma_k(t)$$
+The properties of the $\psi$ function are also elaborated in Section 3 of the paper.
+
+### From forward swap rate to forward swap diffusion
+From the definition of the forward swap above and an application of Ito's lemma, we can use the DD CEV LFM framework to define a diffusion for the forward swap:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= \sum_{k = \alpha + 1}^{\beta}w_k(t)dF_k(t) + F_k(t)dw_k(t)\\
+&= \sum_{j,k = \alpha + 1}^{\beta}\left ( w_j(t)\delta_{j,k}(t) + F_k(t)\frac{\partial w_k(t)}{\partial F_j} \right) dF_j(t)
+\end{aligned}$$
+
+where $\delta_{k,j}(t)$ is Kronecker's Delta and^[For full demonstration cf. [Andersen & Andreasen Approximation]]:
+$$\begin{aligned}
+\frac{\partial w_k(t)}{\partial F_j} = \frac{w_k\tau_j 
+\left( \sum_{i = j}^\beta \tau_i \; \prod_{n = \alpha + 1}^{i} \frac{1}{1 + \tau_n F_n(t)} - \mathds{1}_{\{ k > j\}} \right) }
+{(1 + \tau_j F_j(t)) \sum_{k = \alpha + 1}^{\beta} \tau _k \prod_{n = \alpha + 1}^{k}\frac{1}{1 + \tau_n F_n(t)} }
+\end{aligned}$$
+
+We can simplify our notation in the following manner:
+$$\begin{aligned}
+ \bar{w}(t) = \left( w_j(t)\delta_{j,k}(t) + F_k(t)\frac{\partial w_k(t)}{\partial F_j} \right)
+\end{aligned}$$
+
+### Freezing Technique
+From the last section, we defined the diffusion of the swap under the DD CEV LFM framework to be:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= \sum_{k = \alpha + 1}^{\beta} \bar{w_k}(t)dF_k(t)
+\end{aligned}$$
+
+This allows us to diffuse the forward swap rate under any measure. Selecting the spot LIBOR measure, our diffusion becomes:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= \sum_{k = \alpha + 1}^{\beta} \bar{w_k}(t)dF_k(t) \\
+where&:\\
+dF_k(t) &= (F_k(t)+\delta)^\eta \mu_k^d(t) dt + (F_k(t)+\delta)^\eta (\sigma^k_1(t)dZ_1^d(t) +\sigma^k_2(t)dZ_2^d(t))  \\
+and&:\\
+\mu_k^d(t) &= \left[ \sum_{j = \beta(t)}^k 
+ \tau_j \frac{ [\sigma^j_1(t)\sigma^k_1(t) \; + \sigma^j_1(t)\sigma^k_2(t) + \sigma^j_2(t)\sigma^k_1(t) + \sigma^j_2(t)\sigma^k_2(t)]}
+{1 + \tau_j (F_j(t))} \right] 
+\end{aligned}$$
+
+
+Under the forward swap measure, the diffusion of the forward swap rate $S_{\alpha, \beta}$ is a martingale. Using this fact, we can define the diffusion of the swap rate under $Q^{\alpha, \beta}$, te forward swap measure:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) = \sum_{j = \alpha + 1}^{\beta}
+\bar{w_k}(t) \times 
+\left[(...)dt + F_k(t) + \delta)^\eta \; (\sigma_k^1dZ_1^{\alpha, \beta}(t) + \sigma_k^2dZ_2^{\alpha, \beta}(t)\right]
+\end{aligned}$$
+
+Since, the diffusion is driftless, we obtain:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) = \sum_{j = \alpha + 1}^{\beta}
+\bar{w_k}(t) \times 
+\left[(F_k(t) + \delta)^\eta \; (\sigma_k^1dZ_1^{\alpha, \beta}(t) + \sigma_k^2dZ_2^{\alpha, \beta}(t)\right]
+\end{aligned}$$
+
+Similarly, we can multiply both the numerator and denominator by $\left[S_{\alpha, \beta}(t) + \delta \right]$ to obtain:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= \sum_{j = \alpha + 1}^{\beta}
+\gamma_k(t) \times 
+\left[(S_{\alpha, \beta}(t) + \delta)^\eta \; (\sigma_k^1dZ_1^{\alpha, \beta}(t) + \sigma_k^2dZ_2^{\alpha, \beta}(t)\right] \\
+where&:\\
+\gamma_k(t) &= \frac{\bar{w_k}(t) \times \left(F_k(t) +\delta \right) ^\eta}{(S_{\alpha, \beta}(t) + \delta)^\eta}
+\end{aligned}$$
+
+The freezing technique entails setting $\gamma_k(t)$ to $\gamma_k(0)$. These weights are therefore frozen in time. Our final diffusion is, therefore an approximation of the diffusion under the CEV LSM framework allowing us to price both caps and swaptions. 
+
+The definitive approximation of the forward swap rate diffusion, therefore is:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) \approx  \sum_{k=\alpha +1}^{\beta} \gamma_k(0) \; (S_{\alpha, \beta}(t) + \delta)^\eta \;  [\sigma^k_1(t)dZ^{\alpha, \beta}_1 + \sigma^k_2(t)dZ^{\alpha, \beta}_2 (t)] \\
+\end{aligned}$$
+
+## Swaptions Pricing (Chi-Square)
+We have obtained a diffusion for the forward swap rate in the above section. In this section, we use this diffusion to arrive at an analytical pricing formula for the DD CEV LFM.
+
+We divide this section into a number of parts:
+
+1. **DD CEV LFM to Shifted CEV:** We obtain a unidimensional diffusion from the DD CEV LFM;
+2. **Analytical Pricing:** We obtain an analytical formula for swaptions pricing;
+3. **Volatility Approximation:** In this section we obtain an approximation for the volatility term to be used in the closed form pricing formula;
+
+### DD CEV LFM to shifted CEV
+We recall the final diffusion approximation:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) \approx  \sum_{k=\alpha +1}^{\beta} \gamma_k(0) \; (S_{\alpha, \beta}(t) + \delta)^\eta \;  [\sigma^k_1(t)dZ^{\alpha, \beta}_1 + \sigma^k_2(t)dZ^{\alpha, \beta}_2 (t)] \\
+\end{aligned}$$
+
+Andersen and Andreasen (1998) demonstrate^[cf. Section 3 Lemma 1] that we can represent this SDE as:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= \sigma_{\alpha, \beta} \times (S_{\alpha, \beta}(t) + \delta)^\eta d\tilde{W}(t) \\
+where&:\\
+\tilde{W}(t) &= \frac{\sigma^T(t)}{||\sigma(t)||} \times Z(t)
+\end{aligned}$$
+where $\tilde{W}(t)$ is a unidimensional Brownian motion and $Z(t)$ is the 2 dimensional Brownian motion from the diffusion.
+
+We are therefore faced with two problems:
+
+1. **Analytical pricing formula:** We require an analytical solution/approximation for the one dimensional shifted CEV.
+2. **Volatility Approximation:** We also need to find the value/ approximation of the $\sigma_{\alpha, \beta}$ term.
+
+The coming sections will address each of these problems.
+
+
+### Analytical Pricing Formula
+A relationship between the CEV process and the non-central chi-square distribution was first established by Schroder(1998.)
+
+We use a simple application of the Ito's lemma to arrive at the same result for the displaced diffusion CEV.
+
+We begin by recalling the shifted CEV process:
+$$dS_{\alpha, \beta}(t) = \sigma_{\alpha, \beta} (S_{\alpha, \beta}(t)+\delta)^\etadW(t)$$
+
+We can perform a change of variables and define the variable $X$ such that:
+$$\begin{aligned}
+X = \frac{(S_{\alpha, \beta}(t) + \delta)^\eta}{\sigma_{\alpha, \beta}^2  (1 - \eta)^2} 
+\end{aligned}$$
+Applying Ito's lemma, we can define $X$ as a square root process:
+$$\begin{aligned}
+dX(t) &= \phi dt + 2 \sqrt{X} dW(t)\\
+where&: \\
+\phi &= \frac{1 - 2\eta}{1 - \eta}
+\end {aligned}$$
+
+This equation is a squared Bessel process $BESQ^\phi$ process with $\phi$ degress of freedom.
+
+#### The Feller Classification
+Feller(1951) studies diffusions of the class:
+$$\begin{aligned}
+dX(t) &= (c+ bX) dt + \sqrt{2aX} dW(t)\\
+\end {aligned}$$
+
+whose corresponding Fokker-Planck equation is:
+$$\begin{aligned}
+\frac{\partial p }{\partial t} &= \frac{\partial^2 }{\partial X^2}(aXp) - \frac{\partial}{\partial X}((bX +c) p) \;\;\; 
+\left\{0 < X < \infty \; ; \; 0 < t < T\right\} \\
+Initial Condition:&\\
+p(X, 0) &= \delta_D(X - X_0)
+\end {aligned}$$
+
+where $\delta_D(x)$ is the Dirac delta function.
+
+
+Clearly, setting $a = 2$, $b= \delta$ and $c=0$ yields our BESQ equation. 
+
+#### Solution
+The quantity $p(X_T, T, X_0) \Delta = p(X_T, T)\Delta$ is the probability that $X_T \in (X_T, X_{T}+ \Delta)$ conditional on $X(0) = X_0.$
+
+After lengthy calculation elaborated in Brecher & Lindsay (2010), we obtain the value of a swaption to be:
+$$\begin{aligned}
+\boldsymbol {PS}(t, T_\alpha,T_\beta,\theta,N,K) &= N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} D(t, T_{i}) \right]  \boldsymbol{\mathbb{E}^{Q^T}} [(S_{\alpha, \beta}(t) - K)^{+}|S_{\alpha, \beta}(t) = S] \\
+&= N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} D(t, T_{i}) \right]  \boldsymbol{\mathbb{E}^{Q^T}} [((S_{\alpha, \beta}(t)+\delta) - (K+\delta)^{+}|S_{\alpha, \beta}(t) = S]\\
+&= N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} D(t, T_{i}) \right] \int_{\tilde{K}}^\infty \left[\frac{X^{-\upsilon}}{(\sigma_{\alpha, \beta} (1 - \eta))^{2\upsilon}} - (K+\delta) \right] p(X, T; X_0)dX
+\end{aligned}$$
+where:
+$$\tilde{K} = \frac{(K+\delta)^{2(1 - \alpha)}}{(\sigma_{\alpha, \beta}(1 - \eta))^2}$$
+and:
+$$\int_{\tilde{K}}^\infty p(X, T; X_0)dX = \chi^2 \left(\frac{X_0}{T}; 2 - \delta, \frac{\tilde{K}}{T} \right)$$
+We obtain the final result to be:
+$$\begin{aligned}
+\boldsymbol {PS}(t, T_\alpha,T_\beta,\theta,N,K) &= A_{\alpha, \beta}(t) \left[ (S_{\alpha, \beta}(t) + \delta) \left [1 - \chi^2 \left(\frac{\tilde{K}}{T}; 4 - \delta, \frac{X_0}{T}\right) \right] - 
+(K +\delta)  \chi^2 \left(\frac{X_0}{T}; 2 - \delta, \frac{\tilde{K}}{T}\right)  \right]\\
+where&: \\
+A_{\alpha, \beta}(t) &= N \times \theta \times \left [\sum_{k=\alpha + 1}^{\beta} D(t, T_{i}) \right]
+\end{aligned}$$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Volatility Approximation
+From the formulas provided above, the most important missing parameter is the $\sigma_{\alpha, \beta}$. Under the LSM, this parameter would have been readily available as the norm of the $\sigma$ terms.
+
+However, seeing that the LFM and LSM are incompatible, we are required to use an approximation.
+
+In this section, we give a brief overview of the derivation of this approximation. For full calculation cf. [Volatility Dynamics & Rebonato Approximation].
+
+We begin with a definition by Andersen and Andreasen (1997) of volatility term as:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2 = \frac{1}{T_\alpha}\int_t^{T_\alpha} \vert\vert\gamma(u)\sigma(u) \vert \vert_2 du
+\end{aligned}$$
+
+for $\gamma(u)$ the vector of _"frozen"_ scalar weights and $\sigma$ the matrix of all vector functions $\sigma_k(t)$.
+
+We can expand this expression to:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2 &= \frac{1}{T_\alpha}\int_t^{T_\alpha} \sum_{i, j = \alpha + 1}^{\beta} \gamma_i(u) \gamma_j(u) \; \langle \sigma_i(u), \sigma_j(u) \rangle \; du \\
+\end{aligned}$$
+
+At this juncture it is important to note that $\sigma_k(t)$ is of the same dimension as the Brownian motion i.e. $\sigma_k(t)$ is d-dimensional.
+
+It is also important to note that $\gamma_k(t)$ are the frozen weights $\frac{\partial S_{\alpha, \beta}(t)}{\partial F_k(t)} \times \frac{(F_k(t) + \delta)^\eta}{(S_{\alpha, \beta}(t)+ \delta)^\eta}$. 
+
+We therefore expand the inner product to obtain:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2 &= \frac{1}{T_\alpha}\int_t^{T_\alpha} \sum_{q = 1}^{d} \sum_{i, j = \alpha + 1}^{\beta} \gamma_i(u) \gamma_j(u) \sigma_i^q(u)\sigma_j^q(u) du
+\end{aligned}$$
+
+At this point, we can freeze the $\gamma_k(t)$ terms for the final expression:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2 &= \frac{1}{T_\alpha}\int_t^{T_\alpha} \sum_{q = 1}^{d} \sum_{i, j = \alpha + 1}^{\beta} \frac{\gamma_i(0) \gamma_j(0)F_i(0)F_j(0) \sigma_i^q(u)\sigma_j^q(u)}{S_{\alpha, \beta}(0)^2} du
+\end{aligned}$$
+
+This expression is the **Rebonato approximation of the swaption LFM volatility term.**
+
+The **Rebonato approximation** is one of the most commonly used in the market:
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2 &= \frac{1}{T_\alpha}\sum_{n=0}^{T_\alpha}T_{n+1} - T_n \sum_{q = 1}^{d} \sum_{i, j = \alpha + 1}^{\beta} \frac{\gamma_i(0) \gamma_j(0)[F_i(0)+ \delta]^\eta \; [F_j(0)+\delta]^\eta \sigma_i^q(u)\sigma_j^q(u)}
+{[S_{\alpha, \beta}(0) + \delta]^{2\eta}} 
+\end{aligned}$$
+
+
+# Calibration
+
+## Objective Function 
+We begin by recalling the volatility term $\sigma_{\alpha, \beta}$
+$$\begin{aligned}
+\sigma_{\alpha, \beta}^2 &= \frac{1}{T_\alpha}\sum_{n=0}^{T_\alpha}T_{n+1} - T_n \sum_{q = 1}^{d} \sum_{i, j = \alpha + 1}^{\beta} \frac{\gamma_i(0) \gamma_j(0)[F_i(0)+ \delta]^\eta \; [F_j(0)+\delta]^\eta \sigma_i^q(u)\sigma_j^q(u)}
+{[S_{\alpha, \beta}(0) + \delta]^{2\eta}} 
+\end{aligned}$$
+
+We note the large number of parameters required in the calibration i.e. (all the $\sigma_k$ terms along with their corresponding correlation structure.)
+
+We can greatly reduce the number of parameters by introducing a parametrization of the volatility surface.
+
+We introduce a sequence $\{\Lambda_i^q \}_{i \geq 1; q \in \{1, 2\}}$ where:
+$$\sigma_k^q(t) = \Lambda_{k-\beta(t)+1}^q$$
+In this case, we have 2 brownian motions allowing us to express the $\Upsilon$ terms:
+$$\Lambda_k^1 = \sqrt{1 - \rho^2}\times \sigma_1 e^{-\alpha_1 k \tau}; \;\;
+\Lambda_k^2 = \sigma_2 e^{-\alpha_2 k \tau} + \rho\sigma_1 e^{-\alpha_1 k \tau}$$
+
+At this point, it is important to note that instead of directly calibrating the shift term $\delta$, we will select a number of values and test the stability of our parameters.
+
+From the above parametrization, we can define the set of our parameters $\Psi = (\eta, \sigma_1, \sigma_2, \rho, \alpha_1, \alpha_2)$, and our optimization problem:
+$$\Phi = argmin \left(\sum_{\alpha, \beta} g(\boldsymbol{PS^{Mkt}}(t,N, K, \alpha, \beta), \boldsymbol{PS^{DD\; CEV}}(t, N, K, \alpha, \beta, \Psi)) \right)$$
+for a loss function $g$.
+
+## Optimization Algorithm (Levenberg Marquardt Algorithm)
+In this section, we detail the Levenberg Marquardt Algorithm allowing us to minimize the following function:
+$$F(x) = \frac{1}{2} ||f(x)^2|| = \frac{1}{2} \sum_{i = 1}^{m}f_i(x)^2$$
+In our case specifically, $x$ represents the parameter set $\Psi$ and $f$ is a vector function whose result $f(x) \in \boldsymbol{R^m}$ is the residual errors between the market price $i$ and calculated value from the model.
+
+
+
+# Annex
+## Andersen & Andreasen Approximation
+Despite the initial method having been presented by Andersen & Andreasen, a more elaborate proof was provided by Hull & White.
+
+We recall the definition of the swap rate $S_{\alpha, \beta}(t)$ in terms of the forward rates:
+$$\begin{aligned}
+S_{\alpha, \beta}(t) &= \sum_{k=\alpha+1}^{\beta} w_k(t)F_k(t)
+\end{aligned}$$
+
+Using this definition, we can define the diffusion of the swap in the following manner:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= \sum_{k = \alpha + 1}^{\beta} (w_k(t)dF_k(t) + F_k(t)dw_k(t)) + (...)dt
+\end{aligned}$$
+
+where the drift is defined by the specific measure chosen. This is obtained by applying Ito's lemma on $S_{\alpha, \beta}(t, F, w)$
+
+We apply Ito's lemma to $w_k(t, F)$ to obtain:
+$$\begin{aligned}
+dS_{\alpha, \beta}(t) &= \sum_{j, k = \alpha + 1}^{\beta} (w_j(t)\delta_{j,k}(t) + F_k(t)\frac{\partial w_k(t)}{\partial F_j}) dF_j(t) + (...) dt
+\end{aligned}$$
+
+We then compute:
+$$\begin{aligned}
+\frac{\partial w_k(t)}{\partial F_j} = \frac{w_k\tau_j 
+\left( \sum_{i = j}^\beta \tau_i \; \prod_{n = \alpha + 1}^{i} \frac{1}{1 + \tau_n F_n(t)} - \mathds{1}_{\{ k > j\}} \right) }
+{(1 + \tau_j F_j(t)) \sum_{k = \alpha + 1}^{\beta} \tau _k \prod_{n = \alpha + 1}^{k}\frac{1}{1 + \tau_n F_n(t)} }
+\end{aligned}$$
+
+To show this, we consider 2 cases:
+
+**1) Let k < j**
+$$\begin{aligned}
+\frac{\partial w_k(t)}{\partial F_j} &= \frac{\tau_k \; \prod_{n = \alpha + 1}^{k}\frac{1}{1 + \tau_n F_n(t)}\;  .\;  \sum_{r =j}^\beta \tau_r \; 
+\prod_{n = \alpha + 1, \; n \neq j}^{r}\frac{1}{1 + \tau_n F_n(t)} \; \frac{-\tau_r}{(1 + \tau_r F_r(t))^2}}
+{\left( \sum_{i =  \alpha + 1}^{\beta} \tau_i 
+\prod_{n = \alpha + 1}^{k}\frac{1}{1 + \tau_i F_i(t)}\;\right)^2}\\
+&= \frac{w_k \tau_j}{(1 + \tau_j F_j(t))^2 \sum_{i =\alpha + 1}^\beta \tau_i \prod_{n = \alpha + 1}^i
+\frac{1}{1 + \tau_n F_n(t)}} \; . \; \sum_{i = j}^{\beta} \tau_i \prod_{n = \alpha + 1, \; n \neq j}^{i} \frac{1}{1 + \tau_n F_n(j)}\\
+&= \frac{w_k \tau_j}{(1 + \tau_j F_j(t)) \sum_{i =\alpha + 1}^\beta \tau_i \prod_{n = \alpha + 1}^i
+\frac{1}{1 + \tau_n F_n(t)}} \; . \; \sum_{i = j}^{\beta} \tau_i \prod_{n = \alpha + 1}^{i} \frac{1}{1 + \tau_n F_n(j)}\\
+\end{aligned}$$
+
+We denote this final value $W^*$.
+
+**2) Let k ** $\geq$ **j**
+$$\begin{aligned}
+\frac{\partial w_k(t)}{\partial F_j} &= 
+\frac{\tau_k \prod_{r = \alpha + 1;\; r \neq j}^k \frac{1}{1 + \tau_r F_r(t)} \; 
+\frac{-\tau_j}{(1 + \tau_j F_j(t))^2} \; . \sum_{i = \alpha + 1}^\beta \tau_i 
+ \prod_{n = \alpha + 1} ^k \frac{1}{1 + \tau_n F_n(t)}}
+{\left( \sum_{i =  \alpha + 1}^{\beta} \tau_i 
+\prod_{n = \alpha + 1}^{k}\frac{1}{1 + \tau_i F_i(t)}\;\right)^2} + W^* \\
+&= W^* - \frac{w_k \tau_j}{(1 + \tau_j F_j(t)) \sum_{i = \alpha + 1} ^\beta \tau_i
+ \prod_{n = \alpha + 1} ^k \frac{1}{1 + \tau_n F_n(t)}}
+\end{aligned}$$
