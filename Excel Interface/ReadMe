@@ -1,0 +1,2 @@
+This module requires a Moodys scenario table.
+The Excel Interface is meant to modify a scenario table from Moodys but can be extended if other models are involved
