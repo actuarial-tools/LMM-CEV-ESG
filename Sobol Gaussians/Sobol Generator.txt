@@ -1,0 +1,16 @@
+install.packages("randtoolbox")
+library(randtoolbox)
+library(tidyverse)
+library(openxlsx)
+
+# Define and set working directory
+loc <- "\\cerata\DGCU\Risques\16. Actuarial Function\05. Economic Scenario Générator\00 - DD LMM CEV\02 - Travaux\Excel Interface\Analysis\Sobol Gaussians"
+setwd(loc)
+
+# Declare randomized and non randomized gaussians
+gaussiansScrambled <- sobol(3000, 180, scrambling = 3, normal = TRUE)
+gaussians <- sobol(3000, 180, normal = TRUE, scrambling = 0)
+
+# Save data as excel
+write.xlsx("SobolScrambled.xlsx", as.data.frame(gaussiansScrambled))
+write.xlsx("Sobol.xlsx", as.data.frame(gaussians))
