@@ -4,7 +4,7 @@ library(tidyverse)
 library(openxlsx)
 
 # Define and set working directory
-loc <- "\\cerata\DGCU\Risques\16. Actuarial Function\05. Economic Scenario Générator\00 - DD LMM CEV\02 - Travaux\Excel Interface\Analysis\Sobol Gaussians"
+loc <- "\\cerata\DGCU\Risques\16. Actuarial Function\05. Economic Scenario GÃ©nÃ©rator\00 - DD LMM CEV\02 - Travaux\Excel Interface\Analysis\Sobol Gaussians"
 setwd(loc)
 
 # Declare randomized and non randomized gaussians
